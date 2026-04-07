@@ -22,5 +22,29 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Geist 无中文子集时，用系统黑体回退，避免出现 □□□ / ??? */
+  font-family:
+    var(--font-geist-sans),
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "Noto Sans SC",
+    "Heiti SC",
+    sans-serif;
+}
+
+/* 地图点位底部卡片入场 */
+@keyframes spot-bottom-card-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.spot-bottom-card {
+  animation: spot-bottom-card-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

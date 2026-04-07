@@ -1,0 +1,13 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, MapPin, Search, Star, X } from "lucide-react";
+import { DEV_USER_ID } from "@/lib/constants/user";
+import type { PrefRecord } from "@/types/pref";
+import type { Spot } from "@/types/spot";
+type PrefItem = { pref: PrefRecord; spot: Spot | null };
+function scoreColor(v:number){if(v>=4.5)return"#ef4444";if(v>=3.5)return"#f97316";if(v>=2.5)return"#eab308";return"#94a3b8";}
+function ScoreBadge({value}:{value:number}){return(<span style={{background:scoreColor(value)}}className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white shadow">{value}</span>);}
+function MiniDims({dims}:{dims:PrefRecord["dimensions"]}){if(!dims)return null;const e=(["口味",dims.taste],["环境",dims.ambiance],["服务",dims.service],["性价比",dims.value]as[string,number][]).filter(([,v])=>v>0);if(!e.length)return null;return(<div className="flex flex-wrap gap-x-3 px-4 pb-2">{e.map(([l,v])=>(<span key={l}className="text-[11px] text-white/50">{l}<span className="ml-0.5 font-medium text-white/70">{v}</span><span className="text-amber-400/70">★</span></span>))}</div>);}
+function StatCard({label,value}:{label:string;value:string|number}){return(<div className="flex flex-col items-center rounded-2xl bg-white/10 px-5 py-3"><span className="text-2xl font-bold text-white">{value}</span><span className="mt-0.5 text-xs text-white/65">{label}</span></div>);}
+const SCORE_F=[{label:"全部",min:0},{label:"≥3",min:3},{label:"≥4",min:4},{label:"≥4.5",min:4.5}];
