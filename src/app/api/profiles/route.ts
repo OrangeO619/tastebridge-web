@@ -3,17 +3,41 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const query = searchParams.get("query")?.trim();
   const ids = searchParams.get("ids")?.split(",").filter(Boolean) ?? [];
-  if (!ids.length) return NextResponse.json({ profiles: {} });
   try {
     const db = createSupabaseAdmin();
-    const { data } = await db.from("profiles").select("id, display_name, avatar_url").in("id", ids);
+    if (query) {
+      const { data, error } = await db
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .ilike("display_name", `%${query}%`)
+        .limit(20);
+      if (error) return NextResponse.json({ items: [], error: error.message }, { status: 500 });
+      const items = (data ?? []).map((row) => ({
+        id: row.id,
+        displayName: (row.display_name as string) ?? row.id.slice(0, 6),
+        avatarUrl: row.avatar_url as string | null,
+      }));
+      return NextResponse.json({ items });
+    }
+
+    if (!ids.length) return NextResponse.json({ profiles: {} });
+    const { data } = await db
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", ids);
     const profiles: Record<string, { displayName: string; avatarUrl: string | null }> = {};
     for (const row of data ?? []) {
-      profiles[row.id] = { displayName: (row.display_name as string) ?? row.id.slice(0,6), avatarUrl: row.avatar_url as string | null };
+      profiles[row.id] = {
+        displayName: (row.display_name as string) ?? row.id.slice(0, 6),
+        avatarUrl: row.avatar_url as string | null,
+      };
     }
     return NextResponse.json({ profiles });
-  } catch { return NextResponse.json({ profiles: {} }); }
+  } catch {
+    return NextResponse.json({ profiles: {} });
+  }
 }
 
 export async function PATCH(request: Request) {

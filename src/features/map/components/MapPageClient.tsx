@@ -48,16 +48,19 @@ export function MapPageClient() {
   const [semanticBaseSummary, setSemanticBaseSummary] = useState<string | null>(null);
   const [semanticLoading, setSemanticLoading] = useState(false);
   const [activeFilters, setActiveFilters] = useState<SemanticFilters | null>(null);
+  const [layerMode, setLayerMode] = useState<"all" | "mine" | "shared">("all");
+  const [sharedMaps, setSharedMaps] = useState<Array<{ ownerId: string; ownerProfile: { display_name?: string | null; avatar_url?: string | null } | null }>>([]);
+  const [sharedOwnerId, setSharedOwnerId] = useState<string | null>(null);
 
   const semanticSummary = useMemo(() => {
     if (!semanticBaseSummary || !hasAnyFilter(activeFilters)) return semanticBaseSummary;
     return `${semanticBaseSummary} · 命中 ${spots.length} 个点位`;
   }, [semanticBaseSummary, activeFilters, spots.length]);
 
-  const fetchSpots = useCallback(async (filters: SemanticFilters | null = null) => {
+  const fetchSpots = useCallback(async (filters: SemanticFilters | null = null, options?: { ownerId?: string | null }) => {
     const uid = user?.id ? `userId=${encodeURIComponent(user.id)}` : "";
     const params = new URLSearchParams(window.location.search);
-    const ownerId = params.get("ownerId");
+    const ownerId = options?.ownerId ?? params.get("ownerId");
     const ownerParam = ownerId ? `ownerId=${encodeURIComponent(ownerId)}` : "";
     const q = toSpotsQuery(filters);
     const sep = q ? "&" : "?";
@@ -86,19 +89,30 @@ export function MapPageClient() {
   }, [fetchSpots]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/maps/${encodeURIComponent(user.id)}/shared`, { headers: { "x-user-id": user.id } })
+      .then((r) => r.json())
+      .then((d) => setSharedMaps((d.items ?? []).map((x: { ownerId: string; ownerProfile: { display_name?: string | null; avatar_url?: string | null } | null }) => ({ ownerId: x.ownerId, ownerProfile: x.ownerProfile ?? null }))))
+      .catch(() => setSharedMaps([]));
+  }, [user?.id]);
+
+  useEffect(() => {
     if (spots.length === 0) return;
     const params = new URLSearchParams(window.location.search);
     const sid = params.get("spotId");
     const ref = params.get("ref");
     const ownerId = params.get("ownerId");
     setSharedViewOwner(ownerId);
+    if (layerMode === "shared" && !sharedOwnerId && sharedMaps.length > 0) {
+      setSharedOwnerId(sharedMaps[0]?.ownerId ?? null);
+    }
     if (!sid) return;
     const found = spots.find((s) => s.id === sid);
     if (found) {
       setSelectedSpot(found);
       if (ref) setInvitedBy(ref);
     }
-  }, [spots]);
+  }, [spots, layerMode, sharedMaps, sharedOwnerId]);
 
   const handleSemanticSearch = useCallback(async (forcedQuery?: string) => {
     const q = (forcedQuery ?? semanticQuery).trim();
@@ -117,28 +131,28 @@ export function MapPageClient() {
         const fallback: SemanticFilters = { keyword: q };
         setActiveFilters(fallback);
         setSemanticBaseSummary("AI 解析失败，已按关键词搜索");
-        await fetchSpots(fallback);
+        await fetchSpots(fallback, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
         return;
       }
       setActiveFilters(intentData.filters);
       setSemanticBaseSummary(intentData.summary ?? "已按语义条件筛选");
-      await fetchSpots(intentData.filters);
+      await fetchSpots(intentData.filters, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
     } catch {
       const fallback: SemanticFilters = { keyword: q };
       setActiveFilters(fallback);
       setSemanticBaseSummary("网络异常，已按关键词搜索");
-      await fetchSpots(fallback);
+      await fetchSpots(fallback, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
     } finally {
       setSemanticLoading(false);
     }
-  }, [fetchSpots, semanticQuery]);
+  }, [fetchSpots, semanticQuery, layerMode, sharedOwnerId]);
 
   const clearSemanticSearch = useCallback(async () => {
     setSemanticQuery("");
     setSemanticBaseSummary(null);
     setActiveFilters(null);
-    await fetchSpots(null);
-  }, [fetchSpots]);
+    await fetchSpots(null, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
+  }, [fetchSpots, layerMode, sharedOwnerId]);
 
   const handleSpotSelect = useCallback((spot: Spot | null) => {
     setSelectedSpot(spot);
@@ -173,6 +187,25 @@ export function MapPageClient() {
     });
   }, []);
 
+  const handleLayerChange = useCallback(async (mode: "all" | "mine" | "shared") => {
+    setLayerMode(mode);
+    setSelectedSpot(null);
+    setPrefGuideSpotId(null);
+    if (mode === "shared") {
+      const owner = sharedOwnerId ?? sharedMaps[0]?.ownerId ?? null;
+      setSharedOwnerId(owner);
+      await fetchSpots(activeFilters, { ownerId: owner });
+    } else {
+      setSharedOwnerId(null);
+      await fetchSpots(activeFilters, { ownerId: null });
+    }
+  }, [activeFilters, fetchSpots, sharedMaps, sharedOwnerId]);
+
+  const handleSharedOwnerChange = useCallback(async (ownerId: string) => {
+    setSharedOwnerId(ownerId);
+    await fetchSpots(activeFilters, { ownerId });
+  }, [activeFilters, fetchSpots]);
+
   return (
     <div className="relative flex h-dvh w-full flex-col">
       <header className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col gap-2 bg-gradient-to-b from-black/55 via-black/35 to-transparent px-3 pb-2 pt-3 sm:px-4">
@@ -187,6 +220,20 @@ export function MapPageClient() {
             <button onClick={signOut} className="max-[420px]:hidden rounded-full border border-white/20 bg-black/30 px-2.5 py-1 text-xs text-white/70 hover:bg-black/50">退出</button>
           </div>
           <PoiSearchBar className="pointer-events-auto order-3 basis-full min-w-0 sm:order-2 sm:basis-auto sm:flex-1 sm:max-w-xl" onPick={handlePoiPick} />
+          <div className="pointer-events-auto order-4 flex flex-wrap items-center gap-1.5">
+            {(["all", "mine", "shared"] as const).map((m) => (
+              <button key={m} onClick={() => void handleLayerChange(m)} className={`rounded-full border px-2.5 py-1 text-[11px] ${layerMode === m ? "border-amber-400 bg-amber-400 text-white" : "border-white/30 bg-black/35 text-white/80 hover:bg-black/50"}`}>
+                {m === "all" ? "全部" : m === "mine" ? "我的足迹" : "共享"}
+              </button>
+            ))}
+            {layerMode === "shared" && sharedMaps.length > 0 ? (
+              <select value={sharedOwnerId ?? sharedMaps[0]?.ownerId ?? ""} onChange={(e) => void handleSharedOwnerChange(e.target.value)} className="rounded-full border border-white/25 bg-black/40 px-2 py-1 text-[11px] text-white/90">
+                {sharedMaps.map((m) => (
+                  <option key={m.ownerId} value={m.ownerId}>{m.ownerProfile?.display_name ?? m.ownerId.slice(0, 6)} 的共享地图</option>
+                ))}
+              </select>
+            ) : null}
+          </div>
           {loadError ? <span className="pointer-events-auto order-2 ml-auto max-w-[45%] truncate text-xs text-amber-200 sm:order-3 sm:max-w-[28%]">{loadError}</span> : <span className="order-2 ml-auto text-xs text-white/90 sm:order-3">{spots.length} 个点位</span>}
         </div>
 
@@ -197,7 +244,14 @@ export function MapPageClient() {
           {hasAnyFilter(activeFilters) ? <button onClick={() => void clearSemanticSearch()} className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/80 hover:bg-white/20"><X className="h-3.5 w-3.5" /></button> : null}
         </div>
 
-        {sharedViewOwner ? (<div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs text-amber-100"><span>当前为共享视角</span><span className="rounded-full bg-black/30 px-2 py-0.5 text-[11px]">{sharedViewOwner.slice(0, 6)}…</span><button onClick={() => {const url = new URL(window.location.href); url.searchParams.delete("ownerId"); window.location.assign(url.toString());}} className="ml-auto rounded-md bg-black/30 px-2 py-0.5 text-[11px] text-white/80">退出共享视角</button></div>) : null}{semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-3 py-1.5 text-xs text-emerald-100">{semanticSummary}</div> : null}
+        {sharedViewOwner ? (
+          <div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs text-amber-100">
+            <span>当前为共享视角</span>
+            <span className="rounded-full bg-black/30 px-2 py-0.5 text-[11px]">{sharedViewOwner.slice(0, 6)}…</span>
+            <button onClick={() => {const url = new URL(window.location.href); url.searchParams.delete("ownerId"); window.location.assign(url.toString());}} className="ml-auto rounded-md bg-black/30 px-2 py-0.5 text-[11px] text-white/80">退出共享视角</button>
+          </div>
+        ) : null}
+        {semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-3 py-1.5 text-xs text-emerald-100">{semanticSummary}</div> : null}
       </header>
 
       <MapView spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} className="h-full w-full flex-1" />

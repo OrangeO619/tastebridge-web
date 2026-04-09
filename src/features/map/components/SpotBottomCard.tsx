@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
-import { MapPin, Phone, Share2, Star, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ImagePlus, Loader2, MapPin, Phone, Share2, Sparkles, Star, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DEV_USER_ID } from "@/lib/constants/user";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils/cn";
@@ -43,8 +43,11 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const [prefs, setPrefs] = useState<PrefRecord[]>([]);
   const [summary, setSummary] = useState<PrefsSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileMap, setProfileMap] = useState<Record<string, { displayName: string; avatarUrl: string | null }>>({});
+  const [localPrefs, setLocalPrefs] = useState<PrefRecord[]>([]);
 
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [overall, setOverall] = useState(4);
   const [emoji, setEmoji] = useState("");
@@ -52,11 +55,21 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [note, setNote] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [aiTagsLoading, setAiTagsLoading] = useState(false);
 
   const [inviteeId, setInviteeId] = useState("");
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
 
   const popularTags = useMemo(() => ["约会", "朋友聚餐", "安静", "适合拍照", "回头客", "夜宵"], []);
+
+  const displayPrefs = useMemo(() => {
+    const merged = new Map<string, PrefRecord>();
+    for (const p of localPrefs) merged.set(p.id, p);
+    for (const p of prefs) merged.set(p.id, p);
+    return Array.from(merged.values()).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [localPrefs, prefs]);
 
   const loadPrefs = async () => {
     setLoading(true);
@@ -67,8 +80,15 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
         setPrefs([]);
         setSummary(null);
       } else {
-        setPrefs(data.prefs ?? []);
+        const list = data.prefs ?? [];
+        setPrefs(list);
         setSummary(data.summary ?? null);
+        if (list.length > 0) {
+          const ids = [...new Set(list.map((p) => p.userId))];
+          const pr = await fetch(`/api/profiles?ids=${encodeURIComponent(ids.join(","))}`);
+          const pj = (await pr.json()) as { profiles?: Record<string, { displayName: string; avatarUrl: string | null }> };
+          if (pj.profiles) setProfileMap(pj.profiles);
+        }
       }
     } finally {
       setLoading(false);
@@ -77,6 +97,13 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
 
   useEffect(() => {
     void loadPrefs();
+  }, [spot.id]);
+
+  useEffect(() => {
+    setLocalPrefs([]);
+    setSaveError(null);
+    setSaveSuccess(null);
+    setImages([]);
   }, [spot.id]);
 
   useEffect(() => {
