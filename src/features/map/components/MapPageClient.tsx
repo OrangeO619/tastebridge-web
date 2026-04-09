@@ -57,14 +57,15 @@ export function MapPageClient() {
     return `${semanticBaseSummary} · 命中 ${spots.length} 个点位`;
   }, [semanticBaseSummary, activeFilters, spots.length]);
 
-  const fetchSpots = useCallback(async (filters: SemanticFilters | null = null, options?: { ownerId?: string | null }) => {
+  const fetchSpots = useCallback(async (filters: SemanticFilters | null = null, options?: { ownerId?: string | null; layer?: "all" | "mine" | "shared" }) => {
     const uid = user?.id ? `userId=${encodeURIComponent(user.id)}` : "";
     const params = new URLSearchParams(window.location.search);
     const ownerId = options?.ownerId ?? params.get("ownerId");
     const ownerParam = ownerId ? `ownerId=${encodeURIComponent(ownerId)}` : "";
+    const layerParam = options?.layer ? `layer=${options.layer}` : "";
     const q = toSpotsQuery(filters);
     const sep = q ? "&" : "?";
-    const res = await fetch(`/api/spots${q}${uid || ownerParam ? `${sep}${[uid, ownerParam].filter(Boolean).join("&")}` : ""}`);
+    const res = await fetch(`/api/spots${q}${uid || ownerParam || layerParam ? `${sep}${[uid, ownerParam, layerParam].filter(Boolean).join("&")}` : ""}`);
     const data = (await res.json()) as { spots?: Spot[]; error?: string };
     if (!res.ok) {
       setLoadError(data.error ?? res.statusText ?? "加载失败");
@@ -131,17 +132,17 @@ export function MapPageClient() {
         const fallback: SemanticFilters = { keyword: q };
         setActiveFilters(fallback);
         setSemanticBaseSummary("AI 解析失败，已按关键词搜索");
-        await fetchSpots(fallback, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
+        await fetchSpots(fallback, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined, layer: layerMode });
         return;
       }
       setActiveFilters(intentData.filters);
       setSemanticBaseSummary(intentData.summary ?? "已按语义条件筛选");
-      await fetchSpots(intentData.filters, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
+      await fetchSpots(intentData.filters, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined, layer: layerMode });
     } catch {
       const fallback: SemanticFilters = { keyword: q };
       setActiveFilters(fallback);
       setSemanticBaseSummary("网络异常，已按关键词搜索");
-      await fetchSpots(fallback, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
+      await fetchSpots(fallback, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined, layer: layerMode });
     } finally {
       setSemanticLoading(false);
     }
@@ -151,7 +152,7 @@ export function MapPageClient() {
     setSemanticQuery("");
     setSemanticBaseSummary(null);
     setActiveFilters(null);
-    await fetchSpots(null, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined });
+    await fetchSpots(null, { ownerId: layerMode === "shared" ? sharedOwnerId : undefined, layer: layerMode });
   }, [fetchSpots, layerMode, sharedOwnerId]);
 
   const handleSpotSelect = useCallback((spot: Spot | null) => {
@@ -194,16 +195,19 @@ export function MapPageClient() {
     if (mode === "shared") {
       const owner = sharedOwnerId ?? sharedMaps[0]?.ownerId ?? null;
       setSharedOwnerId(owner);
-      await fetchSpots(activeFilters, { ownerId: owner });
+      await fetchSpots(activeFilters, { ownerId: owner, layer: "shared" });
+    } else if (mode === "mine") {
+      setSharedOwnerId(null);
+      await fetchSpots(activeFilters, { ownerId: null, layer: "mine" });
     } else {
       setSharedOwnerId(null);
-      await fetchSpots(activeFilters, { ownerId: null });
+      await fetchSpots(activeFilters, { ownerId: null, layer: "all" });
     }
   }, [activeFilters, fetchSpots, sharedMaps, sharedOwnerId]);
 
   const handleSharedOwnerChange = useCallback(async (ownerId: string) => {
     setSharedOwnerId(ownerId);
-    await fetchSpots(activeFilters, { ownerId });
+    await fetchSpots(activeFilters, { ownerId, layer: "shared" });
   }, [activeFilters, fetchSpots]);
 
   return (
@@ -223,7 +227,7 @@ export function MapPageClient() {
           <div className="pointer-events-auto order-4 flex flex-wrap items-center gap-1.5">
             {(["all", "mine", "shared"] as const).map((m) => (
               <button key={m} onClick={() => void handleLayerChange(m)} className={`rounded-full border px-2.5 py-1 text-[11px] ${layerMode === m ? "border-amber-400 bg-amber-400 text-white" : "border-white/30 bg-black/35 text-white/80 hover:bg-black/50"}`}>
-                {m === "all" ? "全部" : m === "mine" ? "我的足迹" : "共享"}
+                {m === "all" ? "全部" : m === "mine" ? "我的足迹" : "共享地图"}
               </button>
             ))}
             {layerMode === "shared" && sharedMaps.length > 0 ? (
@@ -234,7 +238,7 @@ export function MapPageClient() {
               </select>
             ) : null}
           </div>
-          {loadError ? <span className="pointer-events-auto order-2 ml-auto max-w-[45%] truncate text-xs text-amber-200 sm:order-3 sm:max-w-[28%]">{loadError}</span> : <span className="order-2 ml-auto text-xs text-white/90 sm:order-3">{spots.length} 个点位</span>}
+          {loadError ? <span className="pointer-events-auto order-2 ml-auto max-w-[45%] truncate text-xs text-amber-200 sm:order-3 sm:max-w-[28%]">{loadError}</span> : <span className="order-2 ml-auto text-xs text-white/90 sm:order-3">{layerMode === "mine" ? "我的足迹" : layerMode === "shared" ? "共享地图" : "全部图层"} · {spots.length} 个点位</span>}
         </div>
 
         <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur-md">

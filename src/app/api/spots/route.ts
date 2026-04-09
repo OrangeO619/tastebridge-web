@@ -30,6 +30,7 @@ export async function GET(request: Request) {
   const keyword = searchParams.get("keyword")?.trim() ?? null;
   const requesterId = (searchParams.get("userId")?.trim() || request.headers.get("x-user-id")?.trim() || "").trim();
   const ownerId = searchParams.get("ownerId")?.trim() || null;
+  const layer = searchParams.get("layer")?.trim() as "all" | "mine" | "shared" | null;
 
   try {
     const supabase = createSupabaseAdmin();
@@ -65,7 +66,24 @@ export async function GET(request: Request) {
 
     let spots = (spotsRes.data ?? [])
       .filter((row) => {
-        if (!requesterId) return !ownerId;
+        if (!requesterId) return !ownerId && !layer;
+        
+        // 按图层模式筛选
+        if (layer === "mine") {
+          // 仅显示我创建的点位
+          return row.created_by === requesterId;
+        }
+        if (layer === "shared") {
+          // 仅显示共享给我的点位（不包括我自己的）
+          if (ownerId) {
+            // 指定了具体的共享者
+            return row.created_by === ownerId && ownerId !== requesterId && visibleOwnerIds.has(ownerId);
+          }
+          // 显示所有共享给我的点位
+          return row.created_by !== requesterId && visibleOwnerIds.has(row.created_by);
+        }
+        
+        // layer === "all" 或未指定：显示全部可见点位
         if (ownerId) {
           return row.created_by === ownerId && (ownerId === requesterId || visibleOwnerIds.has(ownerId));
         }
