@@ -153,7 +153,25 @@ export async function markInvitesRead(request: Request) {
   const userId = request.headers.get("x-user-id");
   if (!userId) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
+  const sp = new URL(request.url).searchParams;
+  const inviteId = sp.get("inviteId");
+
   const db = createSupabaseAdmin();
+
+  // 如果指定了 inviteId，只标记单条
+  if (inviteId) {
+    const { error } = await db
+      .from("collab_invites")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", Number(inviteId))
+      .eq("invitee_id", userId)
+      .is("read_at", null);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // 否则标记所有未读
   const { error } = await db
     .from("collab_invites")
     .update({ read_at: new Date().toISOString() })

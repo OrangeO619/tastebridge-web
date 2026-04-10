@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { cn } from "@/lib/utils/cn";
 
 type FollowNotif = { id: string; type: "follow"; text: string; time: number; read: boolean };
 type InviteNotif = {
@@ -50,9 +51,9 @@ export function NotificationBell() {
 
   const loadInviteNotifs = async (uid: string) => {
     try {
-      // 只获取未读的协作邀请和地图共享通知
+      // 获取协作邀请（含已读）与地图共享通知
       const [recvRes, shareRes] = await Promise.all([
-        fetch("/api/collaboration/invites?unread=1", { headers: { "x-user-id": uid } }),
+        fetch("/api/collaboration/invites", { headers: { "x-user-id": uid } }),
         fetch("/api/maps/share-notifs", { headers: { "x-user-id": uid } }),
       ]);
 
@@ -60,7 +61,7 @@ export function NotificationBell() {
         invites?: Array<{ id: number; spot_id: string; inviter_id: string; created_at: string; status: "pending" | "accepted" | "rejected"; read_at?: string | null; spots?: { name?: string } | null }>;
       };
       const shared = (await shareRes.json()) as {
-        items?: Array<{ id: number; owner_id: string; permission: "view" | "edit"; created_at: string }>;
+        items?: Array<{ id: number; owner_id: string; permission: "view" | "edit"; created_at: string; read_at?: string | null }>;
       };
 
       const recvList: InviteNotif[] = (recv.invites ?? []).map((x) => ({
@@ -68,7 +69,7 @@ export function NotificationBell() {
         type: "invite_received",
         text: `${x.inviter_id.slice(0, 6)}… 邀请你协作记录「${x.spots?.name ?? "店铺"}」`,
         time: new Date(x.created_at).getTime(),
-        read: false,
+        read: !!x.read_at,
         inviteId: x.id,
         spotId: x.spot_id,
         inviterId: x.inviter_id,
@@ -80,11 +81,11 @@ export function NotificationBell() {
         type: "map_share",
         text: `${x.owner_id.slice(0, 6)}… 向你共享了地图（${x.permission === "edit" ? "可编辑" : "仅查看"}）`,
         time: new Date(x.created_at).getTime(),
-        read: false,
+        read: !!x.read_at,
       }));
 
       setNotifs((prev) => {
-        const follows = prev.filter((n) => n.type === "follow" && !n.read);
+        const follows = prev.filter((n) => n.type === "follow");
         return [...recvList, ...shareList, ...follows].sort((a, b) => b.time - a.time).slice(0, 40);
       });
     } catch {
@@ -147,16 +148,28 @@ export function NotificationBell() {
     };
   }, [user?.id]);
 
+  const markSingleRead = async (notifId: string) => {
+    if (!user?.id) return;
+    // 根据通知类型调用对应的 API
+    if (notifId.startsWith("recv-")) {
+      const inviteId = notifId.replace("recv-", "");
+      try { await fetch(`/api/collaboration/invites?markRead=1&inviteId=${inviteId}`, { method: "PATCH", headers: { "x-user-id": user.id } }); } catch { /* noop */ }
+    } else if (notifId.startsWith("share-")) {
+      const shareId = notifId.replace("share-", "");
+      try { await fetch(`/api/maps/share-notifs?notifId=${shareId}`, { method: "PATCH", headers: { "x-user-id": user.id } }); } catch { /* noop */ }
+    }
+    // 本地标记为已读
+    setNotifs((prev) => prev.map((n) => (n.id === notifId ? { ...n, read: true } : n)));
+  };
+
   const markRead = async () => {
-    // 先在本地标记为已读
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
     if (!user?.id) return;
     // 标记地图共享通知为已读
     try { await fetch("/api/maps/share-notifs", { method: "PATCH", headers: { "x-user-id": user.id } }); } catch { /* noop */ }
     // 标记协作邀请通知为已读
     try { await fetch("/api/collaboration/invites?markRead=1", { method: "PATCH", headers: { "x-user-id": user.id } }); } catch { /* noop */ }
-    // 清空本地通知列表（刷新后不再显示已读通知）
-    setNotifs([]);
+    // 本地标记为已读（不清空列表）
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const handleInviteAction = async (n: InviteNotif, action: "accepted" | "rejected") => {
@@ -170,7 +183,9 @@ export function NotificationBell() {
       const d = (await r.json()) as { spotId?: string; invitedBy?: string };
       if (!r.ok) return;
 
-      setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, status: action } : x)));
+      // 标记为已读
+      void markSingleRead(n.id);
+      setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, status: action, read: true } : x)));
 
       if (action === "accepted" && d.spotId) {
         window.location.assign(`/?spotId=${encodeURIComponent(d.spotId)}&ref=${encodeURIComponent(d.invitedBy ?? n.inviterId)}`);
@@ -185,7 +200,6 @@ export function NotificationBell() {
       <button
         onClick={() => {
           setOpen((o) => !o);
-          if (unread) void markRead();
         }}
         className="relative flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50"
       >
@@ -207,7 +221,7 @@ export function NotificationBell() {
           ) : (
             <ul className="max-h-80 overflow-y-auto">
               {notifs.map((n) => (
-                <li key={n.id} className="border-b border-white/5 px-4 py-3 last:border-0">
+                <li key={n.id} onClick={() => { if (!n.read) void markSingleRead(n.id); }} className={cn("border-b border-white/5 px-4 py-3 last:border-0 cursor-pointer transition", !n.read && "bg-white/5")}>
                   <div className="flex items-start gap-2">
                     <span className={`mt-0.5 h-2 w-2 flex-shrink-0 rounded-full ${n.type === "invite_received" ? "bg-violet-400" : n.type === "invite_sent" ? "bg-sky-400" : n.type === "map_share" ? "bg-emerald-400" : "bg-amber-500"}`} />
                     <div className="min-w-0">

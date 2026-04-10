@@ -10,7 +10,6 @@ export async function GET(request: Request) {
     .from("map_share_notifs")
     .select("id,owner_id,permission,created_at,read_at")
     .eq("shared_with", userId)
-    .is("read_at", null)
     .order("created_at", { ascending: false })
     .limit(40);
 
@@ -27,6 +26,7 @@ export async function GET(request: Request) {
       owner_id: x.owner_id,
       permission: x.permission,
       created_at: x.created_at,
+      read_at: null,
     }));
     return NextResponse.json({ items });
   }
@@ -38,7 +38,25 @@ export async function PATCH(request: Request) {
   const userId = request.headers.get("x-user-id")?.trim();
   if (!userId) return NextResponse.json({ ok: false, error: "未登录" }, { status: 401 });
 
+  const sp = new URL(request.url).searchParams;
+  const notifId = sp.get("notifId");
+
   const db = createSupabaseAdmin();
+
+  // 如果指定了 notifId，只标记单条
+  if (notifId) {
+    const { error } = await db
+      .from("map_share_notifs")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", Number(notifId))
+      .eq("shared_with", userId)
+      .is("read_at", null);
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // 否则标记所有未读
   const { error } = await db
     .from("map_share_notifs")
     .update({ read_at: new Date().toISOString() })
