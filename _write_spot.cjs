@@ -1,4 +1,5 @@
-"use client";
+const fs = require('fs');
+const content = `"use client";
 
 import { CheckCircle2, ImagePlus, Loader2, MapPin, Phone, Share2, Star, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -78,20 +79,16 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [aiTagsLoading, setAiTagsLoading] = useState(false);
-  const [collabEnabled, setCollabEnabled] = useState(false);
-  const [friendList, setFriendList] = useState<Array<{ id: string; displayName: string | null; avatarUrl: string | null }>>([]);
-  const [invitedIds, setInvitedIds] = useState<string[]>([]);
-  const [inviteLoadingId, setInviteLoadingId] = useState<string | null>(null);
+  const [inviteeId, setInviteeId] = useState("");
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const displayPrefs = useMemo(() => [...prefs].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [prefs]);
-  const canInviteFriendIds = useMemo(() => friendList.map((item) => item.id).filter((id) => id !== userId), [friendList, userId]);
 
   const loadPrefs = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/spots/${spot.id}/prefs`, { headers: user?.id ? { "x-user-id": user.id } : undefined });
+      const res = await fetch(\`/api/spots/\${spot.id}/prefs\`, { headers: user?.id ? { "x-user-id": user.id } : undefined });
       const data = (await res.json()) as { prefs?: PrefRecord[]; summary?: PrefsSummary };
       if (!res.ok) { setPrefs([]); setSummary(null); return; }
       const list = data.prefs ?? [];
@@ -99,7 +96,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
       setSummary(data.summary ?? null);
       if (list.length > 0) {
         const ids = [...new Set(list.map((p) => p.userId))];
-        const pr = await fetch(`/api/profiles?ids=${encodeURIComponent(ids.join(","))}`);
+        const pr = await fetch(\`/api/profiles?ids=\${encodeURIComponent(ids.join(","))}\`);
         const pj = (await pr.json()) as { profiles?: Record<string, { displayName: string; avatarUrl: string | null }> };
         if (pj.profiles) setProfileMap(pj.profiles);
       }
@@ -107,35 +104,8 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   };
 
   useEffect(() => { void loadPrefs(); }, [spot.id, user?.id]);
-  useEffect(() => { setSaveError(null); setSaveSuccess(null); setImages([]); setTags([]); setNote(""); setEmoji(""); setMoodTag(""); setOverall(8); setCollabEnabled(false); setInviteMsg(null); setInvitedIds([]); }, [spot.id]);
+  useEffect(() => { setSaveError(null); setSaveSuccess(null); setImages([]); setTags([]); setNote(""); setEmoji(""); setMoodTag(""); setOverall(8); }, [spot.id]);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [onClose]);
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const [followsRes, invitesRes] = await Promise.all([
-          fetch(`/api/follows?userId=${encodeURIComponent(userId)}`),
-          fetchInvitesApi(`${INVITES_API}?role=inviter`, { headers: { "x-user-id": userId } }),
-        ]);
-        const followsData = await followsRes.json();
-        const invitesData = await invitesRes.json();
-        if (cancelled) return;
-        setFriendList(followsData.followingProfiles ?? []);
-        const nextInvitedIds = ((invitesData.invites ?? []) as Array<{ spot_id?: string; invitee_id?: string; status?: string }>)
-          .filter((item) => item.spot_id === spot.id && item.status === "pending" && item.invitee_id)
-          .map((item) => String(item.invitee_id));
-        setInvitedIds(Array.from(new Set(nextInvitedIds)));
-      } catch {
-        if (cancelled) return;
-        setFriendList([]);
-        setInvitedIds([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [spot.id, userId]);
 
   const addTag = (raw: string) => { const t = raw.trim(); if (!t || tags.includes(t)) return; setTags((prev) => [...prev, t].slice(0, 8)); };
   const removeTag = (tag: string) => setTags((prev) => prev.filter((x) => x !== tag));
@@ -171,7 +141,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const handleSaveMine = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setSaveError(null); setSaveSuccess(null);
     try {
-      const res = await fetch(`/api/spots/${spot.id}/prefs`, { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8", ...(user?.id ? { "x-user-id": user.id } : {}) }, body: JSON.stringify({ userId, overall: Math.max(1, Math.min(5, Math.round(overall / 2))), emoji: emoji.trim() || undefined, moodTag: moodTag.trim() || undefined, tags, note: note.trim() || undefined, images, invitedBy: invitedBy ?? undefined }) });
+      const res = await fetch(\`/api/spots/\${spot.id}/prefs\`, { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8", ...(user?.id ? { "x-user-id": user.id } : {}) }, body: JSON.stringify({ userId, overall: Math.max(1, Math.min(5, Math.round(overall / 2))), emoji: emoji.trim() || undefined, moodTag: moodTag.trim() || undefined, tags, note: note.trim() || undefined, images, invitedBy: invitedBy ?? undefined }) });
       const data = (await res.json()) as { error?: unknown };
       if (!res.ok) { setSaveError(typeof data.error === "string" ? data.error : "保存失败"); return; }
       await loadPrefs();
@@ -181,25 +151,19 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
     } catch (err) { setSaveError(err instanceof Error ? err.message : "保存失败"); } finally { setSaving(false); }
   };
 
-  const handleInvite = async (targetId: string) => {
-    if (!targetId) { setInviteMsg("请选择好友"); return; }
-    setInviteLoadingId(targetId);
-    setInviteMsg(null);
+  const handleInvite = async () => {
+    const targetId = inviteeId.trim();
+    if (!targetId) { setInviteMsg("请输入被邀请用户ID"); return; }
     try {
-      const r = await fetchInvitesApi(`${INVITES_API}`, { method: "POST", headers: { "Content-Type": "application/json", "x-user-id": userId }, body: JSON.stringify({ spotId: spot.id, inviteeId: targetId }) });
+      const r = await fetchInvitesApi(\`\${INVITES_API}\`, { method: "POST", headers: { "Content-Type": "application/json", "x-user-id": userId }, body: JSON.stringify({ spotId: spot.id, inviteeId: targetId }) });
       const d = (await r.json()) as { error?: unknown; duplicated?: boolean };
       if (!r.ok) { setInviteMsg(d.error ? String(d.error) : "邀请失败"); return; }
-      setInvitedIds((prev) => prev.includes(targetId) ? prev : [...prev, targetId]);
-      setInviteMsg(d.duplicated ? "存在待处理邀请，已标记为已邀请" : "邀请已发送");
-    } catch {
-      setInviteMsg("邀请失败");
-    } finally {
-      setInviteLoadingId(null);
-    }
+      setInviteMsg(d.duplicated ? "已存在待处理邀请" : "邀请已发送"); if (!d.duplicated) setInviteeId("");
+    } catch { setInviteMsg("邀请失败"); }
   };
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/?spotId=${spot.id}&ref=${encodeURIComponent(userId)}`;
+    const url = \`\${window.location.origin}/?spotId=\${spot.id}&ref=\${encodeURIComponent(userId)}\`;
     if (navigator.share) await navigator.share({ title: spot.name, url }); else await navigator.clipboard.writeText(url);
   };
 
@@ -225,9 +189,12 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
           <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800"><p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">AI 推荐标签</p><div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void handleGenerateAiTags()} disabled={aiTagsLoading} className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">{aiTagsLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> 生成中</span> : "生成标签推荐"}</button><div className="flex flex-wrap gap-2">{[...DEFAULT_TAGS, ...tags].filter((tag, index, arr) => arr.indexOf(tag) === index).map((tag) => { const active = tags.includes(tag); return <button key={tag} type="button" onClick={() => active ? removeTag(tag) : addTag(tag)} className={cn("rounded-full border px-3 py-1.5 text-xs transition", active ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900" : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-transparent dark:text-zinc-200")}>#{tag}</button>; })}<button type="button" onClick={() => addTag(tagInput)} className="rounded-full border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-500 dark:border-zinc-700">+ 自定义</button></div></div><div className="mt-3 flex gap-2"><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(tagInput); setTagInput(""); } }} placeholder="输入自定义标签" className="flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none dark:border-zinc-700 dark:bg-zinc-950" /><button type="button" onClick={() => { addTag(tagInput); setTagInput(""); }} className="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">添加</button></div></div>
           <button type="submit" disabled={saving || uploading} className="mt-4 inline-flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-400 disabled:opacity-60">{saving ? "保存中…" : "保存评价"}</button>
         </form>
-        <section className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-700"><div className="flex items-center justify-between"><p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">评价列表</p><span className="text-xs text-zinc-500">按时间倒序</span></div><div className="mt-3 space-y-3">{loading ? <p className="text-sm text-zinc-500">加载评价中…</p> : null}{!loading && displayPrefs.length === 0 ? <p className="text-sm text-zinc-500">还没有评价，来写第一条吧。</p> : null}{displayPrefs.map((pref) => { const profile = profileMap[pref.userId]; const avatarFallback = (profile?.displayName ?? pref.userId).slice(0, 1).toUpperCase(); return <article key={pref.id} className="rounded-2xl bg-zinc-50 p-3 dark:bg-zinc-800/60"><div className="flex items-start gap-3">{profile?.avatarUrl ? <img src={profile.avatarUrl} alt={profile.displayName} className="h-10 w-10 rounded-full object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-sm font-semibold text-amber-600">{avatarFallback}</div>}<div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><div><p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{profile?.displayName ?? `${pref.userId.slice(0, 6)}…`}</p><p className="text-[11px] text-zinc-500">{formatDateTime(pref.updatedAt)}</p></div><div className={cn("flex items-center gap-1 text-sm font-semibold", getScoreColor(pref.overall))}><Star className="h-4 w-4 fill-current" /><span>{pref.overall}</span></div></div><div className="mt-2 flex flex-wrap gap-2">{pref.moodTag ? <span className="rounded-full bg-white px-2.5 py-1 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{pref.emoji ?? "🙂"} {pref.moodTag}</span> : null}{pref.tags.map((tag) => <span key={tag} className="rounded-full border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">#{tag}</span>)}</div>{pref.note ? <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-200">{pref.note}</p> : null}{pref.images.length > 0 ? <div className="mt-3 flex gap-2 overflow-x-auto">{pref.images.map((image) => <img key={image} src={image} alt="review" className="h-20 w-20 rounded-xl object-cover" />)}</div> : null}</div></div></article>; })}</div></section>
-        <section className="rounded-3xl border border-violet-200/70 bg-violet-50/60 p-4 dark:border-violet-900/40 dark:bg-violet-950/20"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium text-violet-800 dark:text-violet-200">邀请好友共同评价</p><p className="mt-1 text-xs text-violet-700/80 dark:text-violet-200/75">勾选后展示你的好友列表，可逐个发起邀请。</p></div><label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs text-violet-700 shadow-sm dark:bg-zinc-900/70 dark:text-violet-100"><input type="checkbox" checked={collabEnabled} onChange={(e) => setCollabEnabled(e.target.checked)} className="h-4 w-4 rounded border-violet-300 text-violet-500 focus:ring-violet-400" /><span>邀请协作</span></label></div>{collabEnabled ? <div className="mt-3 space-y-3">{canInviteFriendIds.length === 0 ? <p className="rounded-2xl border border-dashed border-violet-200 bg-white/70 px-3 py-4 text-sm text-zinc-500 dark:border-violet-900/50 dark:bg-zinc-900/40 dark:text-zinc-300">你还没有可邀请的好友，请先在个人页关注好友。</p> : friendList.filter((item) => item.id !== userId).map((friend) => { const invited = invitedIds.includes(friend.id); const loading = inviteLoadingId === friend.id; return <div key={friend.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-3 py-3 shadow-sm dark:bg-zinc-900/60"><div className="flex min-w-0 items-center gap-3">{friend.avatarUrl ? <img src={friend.avatarUrl} alt={friend.displayName ?? friend.id} className="h-10 w-10 rounded-full object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-600 dark:bg-violet-900/40 dark:text-violet-200">{(friend.displayName ?? friend.id).slice(0, 1).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{friend.displayName ?? `${friend.id.slice(0, 6)}…`}</p><p className="text-[11px] text-zinc-500">{friend.id.slice(0, 6)}…</p></div></div><button type="button" disabled={invited || loading} onClick={() => void handleInvite(friend.id)} className={cn("rounded-xl px-3 py-2 text-sm font-medium transition", invited ? "cursor-not-allowed bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" : "bg-violet-500 text-white hover:bg-violet-400 disabled:opacity-60")}>{loading ? "发送中…" : invited ? "已邀请" : "邀请"}</button></div>; })}</div> : null}{inviteMsg ? <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{inviteMsg}</p> : null}</section>
+        <section className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-700"><div className="flex items-center justify-between"><p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">评价列表</p><span className="text-xs text-zinc-500">按时间倒序</span></div><div className="mt-3 space-y-3">{loading ? <p className="text-sm text-zinc-500">加载评价中…</p> : null}{!loading && displayPrefs.length === 0 ? <p className="text-sm text-zinc-500">还没有评价，来写第一条吧。</p> : null}{displayPrefs.map((pref) => { const profile = profileMap[pref.userId]; const avatarFallback = (profile?.displayName ?? pref.userId).slice(0, 1).toUpperCase(); return <article key={pref.id} className="rounded-2xl bg-zinc-50 p-3 dark:bg-zinc-800/60"><div className="flex items-start gap-3">{profile?.avatarUrl ? <img src={profile.avatarUrl} alt={profile.displayName} className="h-10 w-10 rounded-full object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-sm font-semibold text-amber-600">{avatarFallback}</div>}<div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><div><p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{profile?.displayName ?? \`\${pref.userId.slice(0, 6)}…\`}</p><p className="text-[11px] text-zinc-500">{formatDateTime(pref.updatedAt)}</p></div><div className={cn("flex items-center gap-1 text-sm font-semibold", getScoreColor(pref.overall))}><Star className="h-4 w-4 fill-current" /><span>{pref.overall}</span></div></div><div className="mt-2 flex flex-wrap gap-2">{pref.moodTag ? <span className="rounded-full bg-white px-2.5 py-1 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{pref.emoji ?? "🙂"} {pref.moodTag}</span> : null}{pref.tags.map((tag) => <span key={tag} className="rounded-full border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">#{tag}</span>)}</div>{pref.note ? <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-200">{pref.note}</p> : null}{pref.images.length > 0 ? <div className="mt-3 flex gap-2 overflow-x-auto">{pref.images.map((image) => <img key={image} src={image} alt="review" className="h-20 w-20 rounded-xl object-cover" />)}</div> : null}</div></div></article>; })}</div></section>
+        <section className="rounded-3xl border border-violet-200/70 bg-violet-50/60 p-4 dark:border-violet-900/40 dark:bg-violet-950/20"><p className="text-sm font-medium text-violet-800 dark:text-violet-200">邀请协作记录</p><div className="mt-2 flex gap-2"><input value={inviteeId} onChange={(e) => setInviteeId(e.target.value)} placeholder="输入被邀请 userId" className="flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" /><button type="button" onClick={handleInvite} className="rounded-xl bg-violet-500 px-3 py-2 text-sm text-white">邀请</button></div>{inviteMsg ? <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">{inviteMsg}</p> : null}</section>
       </div>
     </div>
   );
 }
+`;
+fs.writeFileSync('src/features/map/components/SpotBottomCard.tsx', content, 'utf8');
+console.log('done');

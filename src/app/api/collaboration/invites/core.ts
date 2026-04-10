@@ -26,11 +26,12 @@ export async function getInvites(request: Request) {
   const db = createSupabaseAdmin();
   let q = db
     .from("collab_invites")
-    .select("id,spot_id,inviter_id,invitee_id,note,status,created_at,updated_at,spots(id,name,address)")
+    .select("id,spot_id,inviter_id,invitee_id,note,status,created_at,updated_at,read_at,spots(id,name,address)")
     .order("created_at", { ascending: false });
 
   q = role === "inviter" ? q.eq("inviter_id", userId) : q.eq("invitee_id", userId);
   if (onlyPending) q = q.eq("status", "pending");
+  if (sp.get("unread") === "1") q = q.is("read_at", null);
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ invites: [], error: error.message }, { status: 500 });
@@ -145,5 +146,20 @@ export async function updateInvite(request: Request) {
     .eq("id", inviteId)
     .eq("inviter_id", userId);
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+export async function markInvitesRead(request: Request) {
+  const userId = request.headers.get("x-user-id");
+  if (!userId) return NextResponse.json({ error: "未登录" }, { status: 401 });
+
+  const db = createSupabaseAdmin();
+  const { error } = await db
+    .from("collab_invites")
+    .update({ read_at: new Date().toISOString() })
+    .eq("invitee_id", userId)
+    .is("read_at", null);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

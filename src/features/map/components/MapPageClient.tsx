@@ -261,7 +261,7 @@ export function MapPageClient() {
       <MapView spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} className="h-full w-full flex-1" />
       <MapLegend />
 
-      {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} className="max-w-lg" /></div> : null}
+      {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}
 
       {addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[25] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><AddSpotSheet lat={addDraft.lat} lng={addDraft.lng} initial={addDraft.initial} variant={addDraft.initial ? "poi" : "pin"} withLinkedPref={addDraft.initial == null} onClose={handleCloseAdd} onSuccess={async () => { setActiveFilters(null); setSemanticBaseSummary(null); await fetchSpots(null); }} onSpotCreated={(spot) => { setPrefGuideSpotId(spot.id); setSelectedSpot(spot); }} className="max-w-lg" /></div> : null}
     </div>

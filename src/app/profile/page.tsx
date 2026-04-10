@@ -122,7 +122,7 @@ const shownName=localName||displayName;
     <div className="sticky top-0 z-10 flex items-center gap-3 bg-black/40 px-4 py-3 backdrop-blur-md">
       <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"><ArrowLeft className="h-4 w-4"/></Link>
       <h1 className="flex-1 text-base font-semibold text-white">{displayName} 的味觉日记</h1>
-      <button onClick={signOut} className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/70 hover:bg-white/20">登出</button>
+      <button onClick={signOut} className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/70 hover:bg-white/20">退出</button>
       <button onClick={exportXLSX} className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-emerald-400 hover:bg-white/20">导出 XLSX</button><button onClick={openMonthlySummary} className="rounded-full bg-amber-500/25 px-2.5 py-1 text-xs text-amber-200 hover:bg-amber-500/35"><span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3"/>本月回顾</span></button>
       {hasFilter&&(<button onClick={()=>{setSearch("");setMinScore(0);setFilterEmoji(null);setFilterTag(null);}}className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/80 hover:bg-white/25"><X className="h-3 w-3"/>清除筛选</button>)}
     </div>

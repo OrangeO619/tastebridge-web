@@ -50,17 +50,14 @@ export function NotificationBell() {
 
   const loadInviteNotifs = async (uid: string) => {
     try {
-      const [recvRes, sentRes, shareRes] = await Promise.all([
-        fetch("/api/collaboration/invites", { headers: { "x-user-id": uid } }),
-        fetch("/api/collaboration/invites?role=inviter", { headers: { "x-user-id": uid } }),
+      // 只获取未读的协作邀请和地图共享通知
+      const [recvRes, shareRes] = await Promise.all([
+        fetch("/api/collaboration/invites?unread=1", { headers: { "x-user-id": uid } }),
         fetch("/api/maps/share-notifs", { headers: { "x-user-id": uid } }),
       ]);
 
       const recv = (await recvRes.json()) as {
-        invites?: Array<{ id: number; spot_id: string; inviter_id: string; created_at: string; status: "pending" | "accepted" | "rejected"; spots?: { name?: string } | null }>;
-      };
-      const sent = (await sentRes.json()) as {
-        invites?: Array<{ id: number; spot_id: string; invitee_id: string; inviter_id: string; created_at: string; status: "pending" | "accepted" | "rejected"; spots?: { name?: string } | null }>;
+        invites?: Array<{ id: number; spot_id: string; inviter_id: string; created_at: string; status: "pending" | "accepted" | "rejected"; read_at?: string | null; spots?: { name?: string } | null }>;
       };
       const shared = (await shareRes.json()) as {
         items?: Array<{ id: number; owner_id: string; permission: "view" | "edit"; created_at: string }>;
@@ -78,18 +75,6 @@ export function NotificationBell() {
         status: x.status,
       }));
 
-      const sentList: InviteNotif[] = (sent.invites ?? []).map((x) => ({
-        id: `sent-${x.id}`,
-        type: "invite_sent",
-        text: `你邀请 ${x.invitee_id.slice(0, 6)}… 协作「${x.spots?.name ?? "店铺"}」`,
-        time: new Date(x.created_at).getTime(),
-        read: true,
-        inviteId: x.id,
-        spotId: x.spot_id,
-        inviterId: x.inviter_id,
-        status: x.status,
-      }));
-
       const shareList: ShareNotif[] = (shared.items ?? []).map((x) => ({
         id: `share-${x.id}`,
         type: "map_share",
@@ -99,8 +84,8 @@ export function NotificationBell() {
       }));
 
       setNotifs((prev) => {
-        const follows = prev.filter((n) => n.type === "follow");
-        return [...recvList, ...sentList, ...shareList, ...follows].sort((a, b) => b.time - a.time).slice(0, 40);
+        const follows = prev.filter((n) => n.type === "follow" && !n.read);
+        return [...recvList, ...shareList, ...follows].sort((a, b) => b.time - a.time).slice(0, 40);
       });
     } catch {
       // noop
@@ -162,7 +147,17 @@ export function NotificationBell() {
     };
   }, [user?.id]);
 
-  const markRead = () => setNotifs((prev) => prev.map((n) => (n.type === "invite_sent" ? n : { ...n, read: true })));
+  const markRead = async () => {
+    // 先在本地标记为已读
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (!user?.id) return;
+    // 标记地图共享通知为已读
+    try { await fetch("/api/maps/share-notifs", { method: "PATCH", headers: { "x-user-id": user.id } }); } catch { /* noop */ }
+    // 标记协作邀请通知为已读
+    try { await fetch("/api/collaboration/invites?markRead=1", { method: "PATCH", headers: { "x-user-id": user.id } }); } catch { /* noop */ }
+    // 清空本地通知列表（刷新后不再显示已读通知）
+    setNotifs([]);
+  };
 
   const handleInviteAction = async (n: InviteNotif, action: "accepted" | "rejected") => {
     if (!user?.id) return;
@@ -190,7 +185,7 @@ export function NotificationBell() {
       <button
         onClick={() => {
           setOpen((o) => !o);
-          if (unread) markRead();
+          if (unread) void markRead();
         }}
         className="relative flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50"
       >
