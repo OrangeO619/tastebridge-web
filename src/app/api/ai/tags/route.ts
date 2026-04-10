@@ -22,10 +22,10 @@ const TAG_TAXONOMY = `
 `.trim();
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { tags: [], error: "OPENAI_API_KEY 未配置" },
+      { tags: [], error: "DASHSCOPE_API_KEY 未配置" },
       { status: 503 },
     );
   }
