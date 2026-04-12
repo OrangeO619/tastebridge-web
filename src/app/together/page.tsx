@@ -280,7 +280,7 @@ export default function TogetherPage() {
                       {/* Spot header */}
                       <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-700">
                         <div>
-                          <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">{spot.name}</h3>
+                          <a href={`/?spotId=${spot.spotId}`} className="text-sm font-semibold text-zinc-900 hover:text-orange-500 hover:underline dark:text-white dark:hover:text-orange-400">{spot.name}</a>
                           {spot.address && <p className="mt-0.5 text-xs text-zinc-400">{spot.address}</p>}
                         </div>
                         <span className="text-xs text-zinc-400">{formatDate(spot.latestDate)}</span>
