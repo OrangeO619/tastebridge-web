@@ -52,6 +52,7 @@ export function MapPageClient() {
   });
   const [cityStats, setCityStats] = useState<Array<{ name: string; spotCount: number }>>([]);
 
+  const urlSpotHandledRef = useRef(false);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
@@ -132,11 +133,12 @@ export function MapPageClient() {
     if (layerMode === "shared" && !sharedOwnerId && sharedMaps.length > 0) {
       setSharedOwnerId(sharedMaps[0]?.ownerId ?? null);
     }
-    if (!sid) return;
+    if (!sid || urlSpotHandledRef.current) return;
     const found = spots.find((s) => s.id === sid);
     if (found) {
       setSelectedSpot(found);
       if (ref) setInvitedBy(ref);
+      urlSpotHandledRef.current = true;
     }
   }, [spots, layerMode, sharedMaps, sharedOwnerId]);
 

@@ -69,7 +69,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [overall, setOverall] = useState(8);
+  const [overall, setOverall] = useState(5);
   const [emoji, setEmoji] = useState("");
   const [moodTag, setMoodTag] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
@@ -107,7 +107,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   };
 
   useEffect(() => { void loadPrefs(); }, [spot.id, user?.id]);
-  useEffect(() => { setSaveError(null); setSaveSuccess(null); setImages([]); setTags([]); setNote(""); setEmoji(""); setMoodTag(""); setOverall(8); setCollabEnabled(false); setInviteMsg(null); setInvitedIds([]); }, [spot.id]);
+  useEffect(() => { setSaveError(null); setSaveSuccess(null); setImages([]); setTags([]); setNote(""); setEmoji(""); setMoodTag(""); setOverall(5); setCollabEnabled(false); setInviteMsg(null); setInvitedIds([]); }, [spot.id]);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [onClose]);
   useEffect(() => {
     if (!userId) return;
@@ -218,7 +218,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
         {spot.phone ? <div className="flex gap-2 text-sm text-zinc-600 dark:text-zinc-400"><Phone className="mt-0.5 h-4 w-4 shrink-0" /><span>{spot.phone}</span></div> : null}
         <form onSubmit={handleSaveMine} className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-700">
           <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">写下你的喜爱值</p>
-          <div className="mt-4"><div className="flex items-center justify-between text-xs text-zinc-500"><span>喜爱值</span><span className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{overall}</span></div><input type="range" min={1} max={10} value={overall} onChange={(e) => setOverall(Number(e.target.value))} className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-violet-200 accent-violet-500" /><div className="mt-1 flex justify-between text-[11px] text-zinc-400"><span>1</span><span>10</span></div></div>
+          <div className="mt-4"><div className="flex items-center justify-between text-xs text-zinc-500"><span>喜爱值</span><span className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{overall}</span></div><input type="range" min={1} max={5} value={overall} onChange={(e) => setOverall(Number(e.target.value))} className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-violet-200 accent-violet-500" /><div className="mt-1 flex justify-between text-[11px] text-zinc-400"><span>1</span><span>5</span></div></div>
           <div className="mt-4"><p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">情绪标签</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{MOOD_OPTIONS.map((item) => <button key={item.value} type="button" onClick={() => { setMoodTag(item.value); setEmoji(item.emoji); }} className={cn("rounded-2xl border px-3 py-3 text-center transition", moodTag === item.value ? "border-zinc-900 bg-zinc-50 shadow-sm dark:border-zinc-100 dark:bg-zinc-800" : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700")}><div className="text-2xl">{item.emoji}</div><div className="mt-1 text-xs font-medium text-zinc-900 dark:text-zinc-100">{item.label}</div></button>)}</div></div>
           <div className="mt-4"><p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">文字评价（可选）</p><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="记录这次的用餐体验..." className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-violet-300 dark:border-zinc-700 dark:bg-zinc-950" /></div>
           <div className="mt-4"><p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">上传图片（最多3张）</p><input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void handleUploadImages(e.target.files)} /><div className="mt-2 flex gap-3">{Array.from({ length: 3 }).map((_, index) => { const imageUrl = images[index]; return <button key={index} type="button" onClick={() => fileInputRef.current?.click()} className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 hover:border-violet-300 hover:text-violet-500 dark:border-zinc-700 dark:bg-zinc-800">{imageUrl ? <img src={imageUrl} alt="uploaded" className="h-full w-full object-cover" /> : uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}</button>; })}</div></div>
