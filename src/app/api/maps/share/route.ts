@@ -14,11 +14,25 @@ export async function GET(request: Request) {
   const db = createSupabaseAdmin();
   const { data, error } = await db
     .from("map_shares")
-    .select("id,owner_id,shared_with,permission,created_at,profiles:shared_with(id,display_name,avatar_url)")
+    .select("id,owner_id,shared_with,permission,created_at")
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ items: [], error: error.message }, { status: 500 });
+
+  // Fetch shared_with profiles separately
+  const sharedWithIds = [...new Set((data ?? []).map((x) => x.shared_with))];
+  let profileMap: Record<string, { display_name: string | null; avatar_url: string | null }> = {};
+  if (sharedWithIds.length > 0) {
+    const { data: profiles } = await db
+      .from("profiles")
+      .select("id,display_name,avatar_url")
+      .in("id", sharedWithIds);
+    profileMap = (profiles ?? []).reduce((acc, p) => {
+      acc[p.id] = { display_name: p.display_name, avatar_url: p.avatar_url };
+      return acc;
+    }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
+  }
 
   return NextResponse.json({
     items: (data ?? []).map((x) => ({
@@ -27,7 +41,7 @@ export async function GET(request: Request) {
       sharedWith: x.shared_with,
       permission: x.permission,
       createdAt: x.created_at,
-      sharedWithProfile: Array.isArray(x.profiles) ? x.profiles[0] ?? null : x.profiles ?? null,
+      sharedWithProfile: profileMap[x.shared_with] ?? null,
     })),
   });
 }
