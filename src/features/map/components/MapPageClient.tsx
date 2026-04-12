@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Sparkles, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AddSpotInitial } from "./AddSpotSheet";
 import { AddSpotSheet } from "./AddSpotSheet";
@@ -68,6 +68,7 @@ export function MapPageClient() {
   const [layerMode, setLayerMode] = useState<"all" | "mine" | "shared">("all");
   const [sharedMaps, setSharedMaps] = useState<Array<{ ownerId: string; ownerProfile: { display_name?: string | null; avatar_url?: string | null } | null }>>([]);
   const [sharedOwnerId, setSharedOwnerId] = useState<string | null>(null);
+  const [showAiSearch, setShowAiSearch] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(() => {
     if (typeof window !== "undefined") {
       return window.localStorage.getItem("tb_reduce_motion") === "1";
@@ -253,20 +254,20 @@ export function MapPageClient() {
 
   return (
     <div className="relative flex h-dvh w-full flex-col">
-      <header className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col gap-2 bg-gradient-to-b from-black/55 via-black/35 to-transparent px-3 pb-2 pt-3 sm:px-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="pointer-events-auto order-1 flex min-w-0 items-center gap-2">
+      <header className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col gap-1.5 bg-gradient-to-b from-black/55 via-black/35 to-transparent px-2 pb-1.5 pt-2 sm:gap-2 sm:px-4 sm:pb-2 sm:pt-3">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+          <div className="pointer-events-auto col-span-1 flex min-w-0 items-center gap-2 sm:order-1">
             <CitySelector cities={cityStats.map(cs => ({ name: cs.name, center: getCityInfo(cs.name)?.center ?? [116.4, 39.9], zoom: getCityInfo(cs.name)?.zoom ?? 12, spotCount: cs.spotCount }))} currentCity={currentCity.name} onCityChange={handleCityChange} />
-            <span className="text-lg font-semibold tracking-tight text-white">TasteBridge</span>
-            <a href="/profile" className="flex items-center gap-1.5 rounded-full border border-white/35 bg-black/35 px-2.5 py-1 text-xs text-white/95 hover:bg-black/55">
-              {avatarUrl ? <img src={avatarUrl} alt="" className="h-4 w-4 rounded-full object-cover" /> : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold">{displayName.slice(0, 1).toUpperCase()}</span>}
+            <span className="hidden text-lg font-semibold tracking-tight text-white sm:inline">TasteBridge</span>
+            <a href="/profile" className="flex items-center gap-1 rounded-full border border-white/35 bg-black/35 px-2 py-0.5 text-[11px] text-white/95 hover:bg-black/55 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs">
+              {avatarUrl ? <img src={avatarUrl} alt="" className="h-3.5 w-3.5 rounded-full object-cover sm:h-4 sm:w-4" /> : <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold sm:h-4 sm:w-4 sm:text-[9px]">{displayName.slice(0, 1).toUpperCase()}</span>}
               <span className="max-[420px]:hidden">{displayName}</span>
             </a>
             <NotificationBell />
-            <button onClick={signOut} className="max-[420px]:hidden rounded-full border border-white/20 bg-black/30 px-2.5 py-1 text-xs text-white/70 hover:bg-black/50">退出</button>
+            <button onClick={signOut} className="hidden rounded-full border border-white/20 bg-black/30 px-2 py-0.5 text-[11px] text-white/70 hover:bg-black/50 sm:block sm:px-2.5 sm:py-1 sm:text-xs">退出</button>
           </div>
-          <PoiSearchBar className="pointer-events-auto order-3 basis-full min-w-0 sm:order-2 sm:basis-auto sm:flex-1 sm:max-w-xl" onPick={handlePoiPick} />
-          <div className="pointer-events-auto order-4 flex flex-wrap items-center gap-1.5">
+          <PoiSearchBar className="pointer-events-auto col-span-3 row-start-2 min-w-0 sm:col-span-1 sm:row-start-1 sm:order-2 sm:min-w-[280px] sm:max-w-md" onPick={handlePoiPick} />
+          <div className="pointer-events-auto col-span-1 flex items-center gap-1.5 sm:order-4">
             <select 
               value={layerMode === "shared" && sharedOwnerId ? `shared:${sharedOwnerId}` : layerMode} 
               onChange={(e) => {
@@ -279,7 +280,7 @@ export function MapPageClient() {
                   void handleLayerChange(val as "all" | "mine" | "shared");
                 }
               }} 
-              className="rounded-full border border-white/25 bg-black/40 px-3 py-1.5 text-xs text-white/90 outline-none"
+              className="rounded-full border border-white/25 bg-black/40 px-2 py-1 text-[11px] text-white/90 outline-none sm:px-3 sm:py-1.5 sm:text-xs"
             >
               <option value="all">全部图层</option>
               <option value="mine">我的足迹</option>
@@ -289,10 +290,28 @@ export function MapPageClient() {
               ))}
             </select>
           </div>
-          {loadError ? <span className="pointer-events-auto order-2 ml-auto max-w-[45%] truncate text-xs text-amber-200 sm:order-3 sm:max-w-[28%]">{loadError}</span> : <span className="order-2 ml-auto text-xs text-white/90 sm:order-3">{layerMode === "mine" ? "我的足迹" : layerMode === "shared" ? "共享地图" : "全部图层"} · {spots.length} 个点位</span>}
+          {loadError ? <span className="pointer-events-auto col-span-1 justify-self-end max-w-[40%] truncate text-[10px] text-amber-200 sm:order-3 sm:ml-auto sm:max-w-[28%] sm:text-xs">{loadError}</span> : <span className="col-span-1 justify-self-end text-[10px] text-white/90 sm:order-3 sm:ml-auto sm:text-xs"><span className="hidden sm:inline">{layerMode === "mine" ? "我的足迹" : layerMode === "shared" ? "共享地图" : "全部图层"} · </span>{spots.length} 点位</span>}
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur-md">
+        {/* 移动端折叠的 AI 搜索栏 */}
+        <div className="pointer-events-auto sm:hidden">
+          <button onClick={() => setShowAiSearch(!showAiSearch)} className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-black/40 px-2.5 py-1.5 backdrop-blur-md">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="text-[11px] text-white/80">{hasAnyFilter(activeFilters) ? "已筛选" : "AI 搜索"}</span>
+            </div>
+            {showAiSearch ? <ChevronUp className="h-3.5 w-3.5 text-white/60" /> : <ChevronDown className="h-3.5 w-3.5 text-white/60" />}
+          </button>
+          {showAiSearch && (
+            <div className="mt-1.5 flex items-center gap-1.5 rounded-xl border border-white/20 bg-black/40 p-1.5 backdrop-blur-md">
+              <input value={semanticQuery} onChange={(e) => setSemanticQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void handleSemanticSearch(); }} placeholder="如：适合约会的安静餐厅" className="min-w-0 flex-1 bg-transparent text-xs text-white placeholder:text-white/45 outline-none" />
+              <button onClick={() => void handleSemanticSearch()} disabled={semanticLoading || !semanticQuery.trim()} className="rounded-md bg-emerald-500 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-400 disabled:opacity-60">{semanticLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "搜索"}</button>
+              {hasAnyFilter(activeFilters) ? <button onClick={() => void clearSemanticSearch()} className="rounded-md bg-white/10 px-1.5 py-1 text-white/80 hover:bg-white/20"><X className="h-3 w-3" /></button> : null}
+            </div>
+          )}
+        </div>
+        {/* 桌面端始终显示的 AI 搜索栏 */}
+        <div className="pointer-events-auto hidden items-center gap-2 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur-md sm:flex">
           <Sparkles className="h-4 w-4 text-emerald-300" />
           <input value={semanticQuery} onChange={(e) => setSemanticQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void handleSemanticSearch(); }} placeholder="语义搜索：如 适合约会的安静餐厅" className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/45 outline-none" />
           <button onClick={() => void handleSemanticSearch()} disabled={semanticLoading || !semanticQuery.trim()} className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-400 disabled:opacity-60">{semanticLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "AI 搜索"}</button>
@@ -300,21 +319,21 @@ export function MapPageClient() {
         </div>
 
         {sharedViewOwner ? (
-          <div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs text-amber-100">
+          <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg bg-amber-500/20 px-2 py-1 text-[11px] text-amber-100 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs">
             <span>当前为共享视角</span>
             <span className="rounded-full bg-black/30 px-2 py-0.5 text-[11px]">{sharedViewOwner.slice(0, 6)}…</span>
             <button onClick={() => {const url = new URL(window.location.href); url.searchParams.delete("ownerId"); window.location.assign(url.toString());}} className="ml-auto rounded-md bg-black/30 px-2 py-0.5 text-[11px] text-white/80">退出共享视角</button>
           </div>
         ) : null}
-        {semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-3 py-1.5 text-xs text-emerald-100">{semanticSummary}</div> : null}
+        {semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-2 py-1 text-[11px] text-emerald-100 sm:px-3 sm:py-1.5 sm:text-xs">{semanticSummary}</div> : null}
       </header>
 
       <MapView ref={mapRef} spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} reduceMotion={reduceMotion} initialCenter={currentCity.center} initialZoom={currentCity.zoom} className="h-full w-full flex-1" />
       <MapLegend reduceMotion={reduceMotion} onReduceMotionChange={setReduceMotion} />
 
-      {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}
+      {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}
 
-      {addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[25] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><AddSpotSheet lat={addDraft.lat} lng={addDraft.lng} initial={addDraft.initial} variant={addDraft.initial ? "poi" : "pin"} withLinkedPref={addDraft.initial == null} onClose={handleCloseAdd} onSuccess={async () => { setActiveFilters(null); setSemanticBaseSummary(null); await fetchSpots(null); }} onSpotCreated={(spot) => { setPrefGuideSpotId(spot.id); setSelectedSpot(spot); }} className="max-w-lg" /></div> : null}
+      {addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[45] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><AddSpotSheet lat={addDraft.lat} lng={addDraft.lng} initial={addDraft.initial} variant={addDraft.initial ? "poi" : "pin"} withLinkedPref={addDraft.initial == null} onClose={handleCloseAdd} onSuccess={async () => { setActiveFilters(null); setSemanticBaseSummary(null); await fetchSpots(null); }} onSpotCreated={(spot) => { setPrefGuideSpotId(spot.id); setSelectedSpot(spot); }} className="max-w-lg" /></div> : null}
     </div>
   );
 }

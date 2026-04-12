@@ -111,9 +111,9 @@ export function PoiSearchBar({ onPick, className }: PoiSearchBarProps) {
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 gap-2 rounded-xl border border-white/25 bg-black/40 px-2 py-1.5 shadow-lg backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/75">
-          <Search className="mt-2 h-4 w-4 shrink-0 text-white/70" aria-hidden />
+      <div className="flex items-center gap-1.5 sm:flex-row sm:gap-2">
+        <div className="flex min-w-0 flex-1 gap-1.5 rounded-xl border border-white/25 bg-black/40 px-2 py-1 shadow-lg backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/75 sm:gap-2 sm:py-1.5">
+          <Search className="mt-1.5 h-3.5 w-3.5 shrink-0 text-white/70 sm:mt-2 sm:h-4 sm:w-4" aria-hidden />
           <input
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
@@ -121,22 +121,22 @@ export function PoiSearchBar({ onPick, className }: PoiSearchBarProps) {
               if (e.key === "Enter") void search();
             }}
             placeholder="搜店名，如：海底捞 火锅"
-            className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-white placeholder:text-white/50 outline-none"
+            className="min-w-0 flex-1 bg-transparent py-1 text-xs text-white placeholder:text-white/50 outline-none sm:py-1.5 sm:text-sm"
             autoComplete="off"
           />
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 gap-1.5 sm:gap-2">
           <input
             value={city}
             onChange={(e) => setCity(e.target.value)}
             placeholder="城市（可选）"
-            className="w-[6.5rem] rounded-xl border border-white/25 bg-black/40 px-2 py-2 text-sm text-white placeholder:text-white/45 outline-none backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/75 sm:w-28"
+            className="hidden w-20 rounded-lg border border-white/25 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-white/45 outline-none backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/75 sm:block sm:w-24 sm:rounded-xl sm:py-2 sm:text-sm"
           />
           <button
             type="button"
             onClick={() => void search()}
             disabled={loading}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-sm font-medium text-white shadow-md hover:bg-amber-600 disabled:opacity-60"
+            className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-medium text-white shadow-md hover:bg-amber-600 disabled:opacity-60 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
