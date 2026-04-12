@@ -143,7 +143,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const handleGenerateAiTags = async () => {
     setAiTagsLoading(true); setSaveError(null);
     try {
-      const res = await fetch("/api/ai/tags", { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify({ spotName: spot.name, note, overall: Math.max(1, Math.min(5, Math.round(overall / 2))), poiType: spot.categories?.[0], currentTags: tags }) });
+      const res = await fetch("/api/ai/tags", { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify({ spotName: spot.name, note, overall, poiType: spot.categories?.[0], currentTags: tags }) });
       const data = (await res.json()) as { tags?: string[]; error?: string };
       if (!res.ok) { setSaveError(data.error ?? "AI 标签生成失败"); return; }
       setTags((prev) => [...new Set([...prev, ...(data.tags ?? [])])].slice(0, 8));
@@ -171,7 +171,7 @@ export function SpotBottomCard({ spot, className, onClose, showPrefGuide = false
   const handleSaveMine = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setSaveError(null); setSaveSuccess(null);
     try {
-      const res = await fetch(`/api/spots/${spot.id}/prefs`, { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8", ...(user?.id ? { "x-user-id": user.id } : {}) }, body: JSON.stringify({ userId, overall: Math.max(1, Math.min(5, Math.round(overall / 2))), emoji: emoji.trim() || undefined, moodTag: moodTag.trim() || undefined, tags, note: note.trim() || undefined, images, invitedBy: invitedBy ?? undefined }) });
+      const res = await fetch(`/api/spots/${spot.id}/prefs`, { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8", ...(user?.id ? { "x-user-id": user.id } : {}) }, body: JSON.stringify({ userId, overall, emoji: emoji.trim() || undefined, moodTag: moodTag.trim() || undefined, tags, note: note.trim() || undefined, images, invitedBy: invitedBy ?? undefined }) });
       const data = (await res.json()) as { error?: unknown };
       if (!res.ok) { setSaveError(typeof data.error === "string" ? data.error : "保存失败"); return; }
       await loadPrefs();

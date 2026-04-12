@@ -48,3 +48,191 @@ body {
 .spot-bottom-card {
   animation: spot-bottom-card-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* ========== 地图点位情感动效 ========== */
+
+/* 必去 ≥4.5分：心跳脉动 + 火焰光晕 */
+@keyframes spot-heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1.05); }
+  45% { transform: scale(1.12); }
+  60% { transform: scale(1); }
+}
+
+@keyframes spot-flame-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.5), 0 0 16px 4px rgba(249, 115, 22, 0.3);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.7), 0 0 24px 8px rgba(249, 115, 22, 0.5);
+    filter: brightness(1.1);
+  }
+}
+
+.spot-marker-must-go {
+  animation: spot-heartbeat 1.2s ease-in-out infinite, spot-flame-glow 1.2s ease-in-out infinite;
+  will-change: transform, box-shadow, filter;
+}
+
+/* 还行 ≥3.5分：阳光脉冲 + 微笑浮动 */
+@keyframes spot-sunshine-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px 2px rgba(249, 115, 22, 0.3);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 14px 6px rgba(249, 115, 22, 0.55);
+    filter: brightness(1.08);
+  }
+}
+
+@keyframes spot-smile-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.spot-marker-good {
+  animation: spot-smile-float 1.8s ease-in-out infinite, spot-sunshine-pulse 1.8s ease-in-out infinite;
+  will-change: transform, box-shadow, filter;
+}
+
+/* 一般 ≥2.5分：枯萎收缩 + 冷霜效果 */
+@keyframes spot-wither {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.92); }
+}
+
+@keyframes spot-frost {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px rgba(234, 179, 8, 0.25);
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    box-shadow: 0 0 6px 2px rgba(234, 179, 8, 0.15);
+    filter: brightness(0.95) saturate(0.9);
+  }
+}
+
+.spot-marker-average {
+  animation: spot-wither 3s ease-in-out infinite, spot-frost 3s ease-in-out infinite;
+  will-change: transform, box-shadow, filter;
+}
+
+/* 踩雷 <2.5分：雷电闪烁 + 愤怒颤抖 */
+@keyframes spot-lightning {
+  0%, 90%, 100% {
+    box-shadow: 0 0 4px 1px rgba(148, 163, 184, 0.3);
+    filter: brightness(1);
+  }
+  92%, 96% {
+    box-shadow: 0 0 16px 6px rgba(251, 191, 36, 0.8), 0 0 24px 10px rgba(249, 115, 22, 0.5);
+    filter: brightness(1.3);
+  }
+  94%, 98% {
+    box-shadow: 0 0 4px 1px rgba(148, 163, 184, 0.3);
+    filter: brightness(0.9);
+  }
+}
+
+@keyframes spot-angry-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-1.5px, 0) rotate(-2deg); }
+  20% { transform: translate(1.5px, 0) rotate(2deg); }
+  30% { transform: translate(-1.5px, 0) rotate(-2deg); }
+  40% { transform: translate(1.5px, 0) rotate(2deg); }
+  50% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.spot-marker-bad {
+  animation: spot-angry-shake 0.8s ease-in-out infinite, spot-lightning 2.5s ease-in-out infinite;
+  will-change: transform, box-shadow, filter;
+}
+
+/* 未评：静态，悬停涟漪 */
+@keyframes spot-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.spot-marker-unrated {
+  position: relative;
+}
+
+.spot-marker-unrated::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.4);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spot-marker-unrated:hover::before {
+  animation: spot-ripple 0.8s ease-out forwards;
+}
+
+/* 选中状态：脉冲高亮 */
+@keyframes spot-selected-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px white, 0 0 12px 4px rgba(234, 88, 12, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 3px white, 0 0 20px 8px rgba(234, 88, 12, 0.8);
+  }
+}
+
+.spot-marker-selected {
+  animation: spot-selected-pulse 1s ease-in-out infinite !important;
+  z-index: 200 !important;
+}
+
+/* 减少动效模式：禁用所有循环动画 */
+.reduce-motion .spot-marker-must-go,
+.reduce-motion .spot-marker-good,
+.reduce-motion .spot-marker-average,
+.reduce-motion .spot-marker-bad,
+.reduce-motion .spot-marker-selected {
+  animation: none !important;
+}
+
+.reduce-motion .spot-marker-unrated:hover::before {
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+/* 系统级减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .spot-marker-must-go,
+  .spot-marker-good,
+  .spot-marker-average,
+  .spot-marker-bad,
+  .spot-marker-selected {
+    animation: none !important;
+  }
+  
+  .spot-marker-unrated:hover::before {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* 离屏暂停动画（通过 JS 添加 .offscreen 类） */
+.spot-marker-must-go.offscreen,
+.spot-marker-good.offscreen,
+.spot-marker-average.offscreen,
+.spot-marker-bad.offscreen {
+  animation-play-state: paused !important;
+}

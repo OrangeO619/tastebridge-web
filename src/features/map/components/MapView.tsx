@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   getAmapSecurityJsCode,
   getAmapWebKey,
@@ -16,6 +16,8 @@ type MapViewProps = {
   selectedSpotId?: string | null;
   /** 点击标记选中；点击空白地图传 null */
   onSpotSelect?: (spot: Spot | null) => void;
+  /** 减少动效模式 */
+  reduceMotion?: boolean;
   className?: string;
 };
 
@@ -40,6 +42,15 @@ function scoreSize(avg: number | undefined): number {
   return 11;
 }
 
+/** 按平均喜爱值返回动效 CSS 类名 */
+function scoreAnimationClass(avg: number | undefined): string {
+  if (!avg) return "spot-marker-unrated";
+  if (avg >= 4.5) return "spot-marker-must-go";
+  if (avg >= 3.5) return "spot-marker-good";
+  if (avg >= 2.5) return "spot-marker-average";
+  return "spot-marker-bad";
+}
+
 /** 高德 Marker content 用纯 style，Tailwind 类在 createElement 上常不生效 */
 function createMarkerElement(
   selected: boolean,
@@ -50,6 +61,8 @@ function createMarkerElement(
   const base = scoreSize(avgOverall);
   const size = selected ? base + 4 : base;
   const { fill, glow } = scoreColor(avgOverall);
+  
+  // 基础样式
   el.style.width = `${size}px`;
   el.style.height = `${size}px`;
   el.style.borderRadius = "50%";
@@ -61,12 +74,24 @@ function createMarkerElement(
   el.style.cursor = "pointer";
   el.style.pointerEvents = "auto";
   el.style.boxSizing = "border-box";
-  el.style.transition = "transform 0.15s ease";
+  el.style.position = "relative";
+  
+  // 添加动效类
+  const animClass = scoreAnimationClass(avgOverall);
+  el.classList.add(animClass);
+  if (selected) {
+    el.classList.add("spot-marker-selected");
+  }
+  
   if (selected) {
     el.style.outline = `2px solid ${fill}`;
     el.style.outlineOffset = "1px";
   }
   el.title = title;
+  
+  // 存储 spotId 用于离屏检测
+  el.dataset.spotMarker = "true";
+  
   return el;
 }
 
@@ -84,6 +109,7 @@ export function MapView({
   spots = [],
   selectedSpotId = null,
   onSpotSelect,
+  reduceMotion = false,
   className,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,13 +119,41 @@ export function MapView({
   const AMapRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any[]>([]);
+  const markerElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const onSpotSelectRef = useRef(onSpotSelect);
   const ignoreNextMapClickRef = useRef(false);
   const lastFitSignatureRef = useRef<string>("");
   const [error, setError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
 
   onSpotSelectRef.current = onSpotSelect;
+
+  // 离屏检测：暂停不可见点位的动画
+  const setupIntersectionObserver = useCallback(() => {
+    if (intersectionObserverRef.current) {
+      intersectionObserverRef.current.disconnect();
+    }
+    
+    intersectionObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const el = entry.target as HTMLElement;
+          if (entry.isIntersecting) {
+            el.classList.remove("offscreen");
+          } else {
+            el.classList.add("offscreen");
+          }
+        });
+      },
+      { rootMargin: "50px", threshold: 0 }
+    );
+    
+    // 观察所有标记元素
+    markerElementsRef.current.forEach((el) => {
+      intersectionObserverRef.current?.observe(el);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,8 +210,13 @@ export function MapView({
 
     return () => {
       cancelled = true;
+      if (intersectionObserverRef.current) {
+        intersectionObserverRef.current.disconnect();
+        intersectionObserverRef.current = null;
+      }
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
+      markerElementsRef.current.clear();
       lastFitSignatureRef.current = "";
       if (mapRef.current) {
         if (mapClickHandler) {
@@ -178,8 +237,12 @@ export function MapView({
     const AMap = AMapRef.current;
     const map = mapRef.current;
     if (spots.length === 0) lastFitSignatureRef.current = "";
+    
+    // 清理旧标记
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markerElementsRef.current.clear();
+    
     for (const spot of spots) {
       const selected = spot.id === selectedSpotId;
       const content = createMarkerElement(selected, spot.name, spot.avgOverall);
@@ -199,7 +262,12 @@ export function MapView({
         onSpotSelectRef.current?.(spot);
       });
       markersRef.current.push(marker);
+      markerElementsRef.current.set(spot.id, content);
     }
+    
+    // 设置离屏检测
+    setupIntersectionObserver();
+    
     const sig = spotsGeometrySignature(spots);
     if (
       spots.length > 0 &&
@@ -217,8 +285,20 @@ export function MapView({
     return () => {
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
+      markerElementsRef.current.clear();
     };
-  }, [mapReady, spots, selectedSpotId]);
+  }, [mapReady, spots, selectedSpotId, setupIntersectionObserver]);
+
+  // 减少动效模式切换
+  useEffect(() => {
+    if (containerRef.current) {
+      if (reduceMotion) {
+        containerRef.current.classList.add("reduce-motion");
+      } else {
+        containerRef.current.classList.remove("reduce-motion");
+      }
+    }
+  }, [reduceMotion]);
 
   if (error) {
     return (

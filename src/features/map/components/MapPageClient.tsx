@@ -51,6 +51,12 @@ export function MapPageClient() {
   const [layerMode, setLayerMode] = useState<"all" | "mine" | "shared">("all");
   const [sharedMaps, setSharedMaps] = useState<Array<{ ownerId: string; ownerProfile: { display_name?: string | null; avatar_url?: string | null } | null }>>([]);
   const [sharedOwnerId, setSharedOwnerId] = useState<string | null>(null);
+  const [reduceMotion, setReduceMotion] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem("tb_reduce_motion") === "1";
+    }
+    return false;
+  });
 
   const semanticSummary = useMemo(() => {
     if (!semanticBaseSummary || !hasAnyFilter(activeFilters)) return semanticBaseSummary;
@@ -258,8 +264,8 @@ export function MapPageClient() {
         {semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-3 py-1.5 text-xs text-emerald-100">{semanticSummary}</div> : null}
       </header>
 
-      <MapView spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} className="h-full w-full flex-1" />
-      <MapLegend />
+      <MapView spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} reduceMotion={reduceMotion} className="h-full w-full flex-1" />
+      <MapLegend reduceMotion={reduceMotion} onReduceMotionChange={setReduceMotion} />
 
       {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}
 
