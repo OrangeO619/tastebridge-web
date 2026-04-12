@@ -1,11 +1,12 @@
 "use client";
 
 import { Loader2, Sparkles, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AddSpotInitial } from "./AddSpotSheet";
 import { AddSpotSheet } from "./AddSpotSheet";
+import { CitySelector, type CityInfo, DEFAULT_CITY_INFO, getStoredCity, getCityInfo } from "./CitySelector";
 import { MapLegend } from "./MapLegend";
-import { MapView } from "./MapView";
+import { MapView, type MapViewHandle } from "./MapView";
 import { PoiSearchBar } from "./PoiSearchBar";
 import { SpotBottomCard } from "./SpotBottomCard";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -36,6 +37,21 @@ function hasAnyFilter(f: SemanticFilters | null): boolean {
 
 export function MapPageClient() {
   const { user, displayName, avatarUrl, signOut } = useAuth();
+  
+  // 城市选择相关
+  const mapRef = useRef<MapViewHandle>(null);
+  const [currentCity, setCurrentCity] = useState<CityInfo>(() => {
+    if (typeof window !== "undefined") {
+      const stored = getStoredCity();
+      if (stored) {
+        const info = getCityInfo(stored);
+        if (info) return info;
+      }
+    }
+    return DEFAULT_CITY_INFO;
+  });
+  const [cityStats, setCityStats] = useState<Array<{ name: string; spotCount: number }>>([]);
+
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
@@ -63,22 +79,25 @@ export function MapPageClient() {
     return `${semanticBaseSummary} · 命中 ${spots.length} 个点位`;
   }, [semanticBaseSummary, activeFilters, spots.length]);
 
-  const fetchSpots = useCallback(async (filters: SemanticFilters | null = null, options?: { ownerId?: string | null; layer?: "all" | "mine" | "shared" }) => {
+  const fetchSpots = useCallback(async (filters: SemanticFilters | null = null, options?: { ownerId?: string | null; layer?: "all" | "mine" | "shared"; city?: string | null; includeCityStats?: boolean }) => {
     const uid = user?.id ? `userId=${encodeURIComponent(user.id)}` : "";
     const params = new URLSearchParams(window.location.search);
     const ownerId = options?.ownerId ?? params.get("ownerId");
     const ownerParam = ownerId ? `ownerId=${encodeURIComponent(ownerId)}` : "";
     const layerParam = options?.layer ? `layer=${options.layer}` : "";
+    const cityParam = options?.city ? `city=${encodeURIComponent(options.city)}` : "";
+    const cityStatsParam = options?.includeCityStats ? "cityStats=1" : "";
     const q = toSpotsQuery(filters);
     const sep = q ? "&" : "?";
-    const res = await fetch(`/api/spots${q}${uid || ownerParam || layerParam ? `${sep}${[uid, ownerParam, layerParam].filter(Boolean).join("&")}` : ""}`);
-    const data = (await res.json()) as { spots?: Spot[]; error?: string };
+    const res = await fetch(`/api/spots${q}${uid || ownerParam || layerParam || cityParam || cityStatsParam ? `${sep}${[uid, ownerParam, layerParam, cityParam, cityStatsParam].filter(Boolean).join("&")}` : ""}`);
+    const data = (await res.json()) as { spots?: Spot[]; error?: string; cityStats?: Array<{ name: string; spotCount: number }> };
     if (!res.ok) {
       setLoadError(data.error ?? res.statusText ?? "加载失败");
       return;
     }
     setLoadError(data.error ?? null);
     setSpots(data.spots ?? []);
+    if (data.cityStats) setCityStats(data.cityStats);
   }, [user?.id]);
 
   useEffect(() => {
@@ -211,6 +230,20 @@ export function MapPageClient() {
     }
   }, [activeFilters, fetchSpots, sharedMaps, sharedOwnerId]);
 
+
+  const handleCityChange = useCallback(async (city: CityInfo) => {
+    setCurrentCity(city);
+    setSelectedSpot(null);
+    setPrefGuideSpotId(null);
+    mapRef.current?.flyTo(city.center, city.zoom);
+    await fetchSpots(activeFilters, { 
+      ownerId: layerMode === "shared" ? sharedOwnerId : undefined, 
+      layer: layerMode,
+      city: city.name,
+      includeCityStats: true
+    });
+  }, [activeFilters, fetchSpots, layerMode, sharedOwnerId]);
+
   const handleSharedOwnerChange = useCallback(async (ownerId: string) => {
     setSharedOwnerId(ownerId);
     await fetchSpots(activeFilters, { ownerId, layer: "shared" });
@@ -221,6 +254,7 @@ export function MapPageClient() {
       <header className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col gap-2 bg-gradient-to-b from-black/55 via-black/35 to-transparent px-3 pb-2 pt-3 sm:px-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="pointer-events-auto order-1 flex min-w-0 items-center gap-2">
+            <CitySelector cities={cityStats.map(cs => ({ name: cs.name, center: getCityInfo(cs.name)?.center ?? [116.4, 39.9], zoom: getCityInfo(cs.name)?.zoom ?? 12, spotCount: cs.spotCount }))} currentCity={currentCity.name} onCityChange={handleCityChange} />
             <span className="text-lg font-semibold tracking-tight text-white">TasteBridge</span>
             <a href="/profile" className="flex items-center gap-1.5 rounded-full border border-white/35 bg-black/35 px-2.5 py-1 text-xs text-white/95 hover:bg-black/55">
               {avatarUrl ? <img src={avatarUrl} alt="" className="h-4 w-4 rounded-full object-cover" /> : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold">{displayName.slice(0, 1).toUpperCase()}</span>}
@@ -231,18 +265,27 @@ export function MapPageClient() {
           </div>
           <PoiSearchBar className="pointer-events-auto order-3 basis-full min-w-0 sm:order-2 sm:basis-auto sm:flex-1 sm:max-w-xl" onPick={handlePoiPick} />
           <div className="pointer-events-auto order-4 flex flex-wrap items-center gap-1.5">
-            {(["all", "mine", "shared"] as const).map((m) => (
-              <button key={m} onClick={() => void handleLayerChange(m)} className={`rounded-full border px-2.5 py-1 text-[11px] ${layerMode === m ? "border-amber-400 bg-amber-400 text-white" : "border-white/30 bg-black/35 text-white/80 hover:bg-black/50"}`}>
-                {m === "all" ? "全部" : m === "mine" ? "我的足迹" : "共享地图"}
-              </button>
-            ))}
-            {layerMode === "shared" && sharedMaps.length > 0 ? (
-              <select value={sharedOwnerId ?? sharedMaps[0]?.ownerId ?? ""} onChange={(e) => void handleSharedOwnerChange(e.target.value)} className="rounded-full border border-white/25 bg-black/40 px-2 py-1 text-[11px] text-white/90">
-                {sharedMaps.map((m) => (
-                  <option key={m.ownerId} value={m.ownerId}>{m.ownerProfile?.display_name ?? m.ownerId.slice(0, 6)} 的共享地图</option>
-                ))}
-              </select>
-            ) : null}
+            <select 
+              value={layerMode === "shared" && sharedOwnerId ? `shared:${sharedOwnerId}` : layerMode} 
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.startsWith("shared:")) {
+                  const ownerId = val.replace("shared:", "");
+                  void handleLayerChange("shared");
+                  void handleSharedOwnerChange(ownerId);
+                } else {
+                  void handleLayerChange(val as "all" | "mine" | "shared");
+                }
+              }} 
+              className="rounded-full border border-white/25 bg-black/40 px-3 py-1.5 text-xs text-white/90 outline-none"
+            >
+              <option value="all">全部图层</option>
+              <option value="mine">我的足迹</option>
+              {sharedMaps.length > 0 && <option disabled>── 共享地图 ──</option>}
+              {sharedMaps.map((m) => (
+                <option key={m.ownerId} value={`shared:${m.ownerId}`}>{m.ownerProfile?.display_name ?? m.ownerId.slice(0, 6)} 的地图</option>
+              ))}
+            </select>
           </div>
           {loadError ? <span className="pointer-events-auto order-2 ml-auto max-w-[45%] truncate text-xs text-amber-200 sm:order-3 sm:max-w-[28%]">{loadError}</span> : <span className="order-2 ml-auto text-xs text-white/90 sm:order-3">{layerMode === "mine" ? "我的足迹" : layerMode === "shared" ? "共享地图" : "全部图层"} · {spots.length} 个点位</span>}
         </div>
@@ -264,7 +307,7 @@ export function MapPageClient() {
         {semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-3 py-1.5 text-xs text-emerald-100">{semanticSummary}</div> : null}
       </header>
 
-      <MapView spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} reduceMotion={reduceMotion} className="h-full w-full flex-1" />
+      <MapView ref={mapRef} spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} reduceMotion={reduceMotion} initialCenter={currentCity.center} initialZoom={currentCity.zoom} className="h-full w-full flex-1" />
       <MapLegend reduceMotion={reduceMotion} onReduceMotionChange={setReduceMotion} />
 
       {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}

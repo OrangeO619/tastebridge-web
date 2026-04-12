@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import {
   getAmapSecurityJsCode,
   getAmapWebKey,
 } from "@/lib/amap/config";
 import type { Spot } from "@/types/spot";
 
-/** 上海 [lng, lat] */
-const DEFAULT_CENTER: [number, number] = [121.4737, 31.2304];
+/** 武汉 [lng, lat] */
+const DEFAULT_CENTER: [number, number] = [114.3054, 30.5931];
+const DEFAULT_ZOOM = 12;
+
+export type MapViewHandle = {
+  flyTo: (center: [number, number], zoom?: number) => void;
+};
 
 type MapViewProps = {
   spots?: Spot[];
@@ -18,6 +23,10 @@ type MapViewProps = {
   onSpotSelect?: (spot: Spot | null) => void;
   /** 减少动效模式 */
   reduceMotion?: boolean;
+  /** 初始中心点 */
+  initialCenter?: [number, number];
+  /** 初始缩放级别 */
+  initialZoom?: number;
   className?: string;
 };
 
@@ -105,13 +114,15 @@ function spotsGeometrySignature(spots: Spot[]): string {
   );
 }
 
-export function MapView({
+export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView({
   spots = [],
   selectedSpotId = null,
   onSpotSelect,
   reduceMotion = false,
+  initialCenter,
+  initialZoom,
   className,
-}: MapViewProps) {
+}, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
@@ -128,6 +139,15 @@ export function MapView({
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
 
   onSpotSelectRef.current = onSpotSelect;
+
+  // 暴露 flyTo 方法给父组件
+  useImperativeHandle(ref, () => ({
+    flyTo: (center: [number, number], zoom?: number) => {
+      if (mapRef.current) {
+        mapRef.current.setZoomAndCenter(zoom ?? initialZoom ?? DEFAULT_ZOOM, center, false, 500);
+      }
+    },
+  }), [initialZoom]);
 
   // 离屏检测：暂停不可见点位的动画
   const setupIntersectionObserver = useCallback(() => {
@@ -180,8 +200,8 @@ export function MapView({
         if (cancelled || !containerRef.current) return;
 
         const map = new AMap.Map(containerRef.current, {
-          zoom: 12,
-          center: DEFAULT_CENTER,
+          zoom: initialZoom ?? DEFAULT_ZOOM,
+          center: initialCenter ?? DEFAULT_CENTER,
           viewMode: "2D",
         });
 
@@ -313,4 +333,4 @@ export function MapView({
     );
   }
   return <div ref={containerRef} className={className ?? "h-full min-h-[50vh] w-full"} />;
-}
+});

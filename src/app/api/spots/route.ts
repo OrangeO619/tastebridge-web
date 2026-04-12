@@ -17,6 +17,39 @@ const postBodySchema = z.object({
   createdBy: z.string().min(1),
 });
 
+// 城市边界框（简化版，用于按城市筛选）
+const CITY_BOUNDS: Record<string, { minLng: number; maxLng: number; minLat: number; maxLat: number }> = {
+  武汉: { minLng: 113.7, maxLng: 115.0, minLat: 29.9, maxLat: 31.3 },
+  北京: { minLng: 115.4, maxLng: 117.5, minLat: 39.4, maxLat: 41.1 },
+  上海: { minLng: 120.8, maxLng: 122.0, minLat: 30.7, maxLat: 31.9 },
+  广州: { minLng: 112.9, maxLng: 114.0, minLat: 22.5, maxLat: 23.9 },
+  深圳: { minLng: 113.7, maxLng: 114.6, minLat: 22.4, maxLat: 22.9 },
+  成都: { minLng: 103.0, maxLng: 105.0, minLat: 30.0, maxLat: 31.5 },
+  杭州: { minLng: 119.0, maxLng: 121.0, minLat: 29.2, maxLat: 30.6 },
+  南京: { minLng: 118.2, maxLng: 119.5, minLat: 31.2, maxLat: 32.6 },
+  重庆: { minLng: 105.2, maxLng: 107.0, minLat: 28.1, maxLat: 30.2 },
+  西安: { minLng: 107.4, maxLng: 109.8, minLat: 33.4, maxLat: 35.0 },
+  苏州: { minLng: 119.9, maxLng: 121.3, minLat: 30.8, maxLat: 32.0 },
+  天津: { minLng: 116.7, maxLng: 118.1, minLat: 38.5, maxLat: 40.3 },
+  长沙: { minLng: 111.9, maxLng: 114.2, minLat: 27.8, maxLat: 28.7 },
+  郑州: { minLng: 112.7, maxLng: 114.2, minLat: 34.2, maxLat: 35.0 },
+  青岛: { minLng: 119.3, maxLng: 121.0, minLat: 35.3, maxLat: 37.0 },
+  厦门: { minLng: 117.8, maxLng: 118.5, minLat: 24.3, maxLat: 24.8 },
+  大连: { minLng: 120.9, maxLng: 123.0, minLat: 38.7, maxLat: 40.0 },
+  宁波: { minLng: 120.9, maxLng: 122.3, minLat: 29.0, maxLat: 30.4 },
+  无锡: { minLng: 119.7, maxLng: 120.9, minLat: 31.1, maxLat: 32.0 },
+  佛山: { minLng: 112.3, maxLng: 113.5, minLat: 22.4, maxLat: 23.6 },
+};
+
+function detectCity(lng: number, lat: number): string | null {
+  for (const [city, bounds] of Object.entries(CITY_BOUNDS)) {
+    if (lng >= bounds.minLng && lng <= bounds.maxLng && lat >= bounds.minLat && lat <= bounds.maxLat) {
+      return city;
+    }
+  }
+  return null;
+}
+
 export async function GET(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,6 +64,8 @@ export async function GET(request: Request) {
   const requesterId = (searchParams.get("userId")?.trim() || request.headers.get("x-user-id")?.trim() || "").trim();
   const ownerId = searchParams.get("ownerId")?.trim() || null;
   const layer = searchParams.get("layer")?.trim() as "all" | "mine" | "shared" | null;
+  const city = searchParams.get("city")?.trim() || null;
+  const includeCityStats = searchParams.get("cityStats") === "1";
 
   try {
     const supabase = createSupabaseAdmin();
@@ -99,6 +134,34 @@ export async function GET(request: Request) {
         return spot;
       });
 
+    // 计算城市统计（在城市筛选之前）
+    let cityStats: Array<{ name: string; spotCount: number }> = [];
+    if (includeCityStats) {
+      const cityCountMap = new Map<string, number>();
+      for (const spot of spots) {
+        const detectedCity = detectCity(spot.location.lng, spot.location.lat);
+        if (detectedCity) {
+          cityCountMap.set(detectedCity, (cityCountMap.get(detectedCity) ?? 0) + 1);
+        }
+      }
+      cityStats = Array.from(cityCountMap.entries())
+        .map(([name, spotCount]) => ({ name, spotCount }))
+        .sort((a, b) => b.spotCount - a.spotCount);
+    }
+
+    // 按城市筛选
+    if (city) {
+      const bounds = CITY_BOUNDS[city];
+      if (bounds) {
+        spots = spots.filter((spot) =>
+          spot.location.lng >= bounds.minLng &&
+          spot.location.lng <= bounds.maxLng &&
+          spot.location.lat >= bounds.minLat &&
+          spot.location.lat <= bounds.maxLat
+        );
+      }
+    }
+
     if (tags.length > 0 || overallMin !== null || overallMax !== null || categories.length > 0 || keyword) {
       spots = spots
         .map((spot) => {
@@ -147,7 +210,7 @@ export async function GET(request: Request) {
         });
     }
 
-    return NextResponse.json({ spots, permissions: { editableOwnerIds: [...editableOwnerIds], visibleOwnerIds: [...visibleOwnerIds] } });
+    return NextResponse.json({ spots, cityStats, permissions: { editableOwnerIds: [...editableOwnerIds], visibleOwnerIds: [...visibleOwnerIds] } });
   } catch (e) {
     return NextResponse.json({ spots: [], error: String(e) }, { status: 500 });
   }
