@@ -77,7 +77,7 @@ body {
 }
 
 /* 还行 ≥3.5分：阳光脉冲 + 微笑浮动 */
-@keyframes spot-sunshine-pulse {
+/* @keyframes spot-sunshine-pulse {
   0%, 100% {
     box-shadow: 0 0 6px 2px rgba(249, 115, 22, 0.3);
     filter: brightness(1);
@@ -96,58 +96,96 @@ body {
 .spot-marker-good {
   animation: spot-smile-float 1.8s ease-in-out infinite, spot-sunshine-pulse 1.8s ease-in-out infinite;
   will-change: transform, box-shadow, filter;
+} */
+
+/* 一般 ≥2.5分：静态，无动效 */
+.spot-marker-average {
+  /* 无动效，保持静态 */
 }
 
-/* 一般 ≥2.5分：枯萎收缩 + 冷霜效果 */
-@keyframes spot-wither {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(0.92); }
+/* 踩雷 <2.5分：强烈警告动效 - 持续颤抖 + 红色闪烁 + 危险光晕 */
+/* @keyframes spot-danger-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  5% { transform: translate(-2px, 0) rotate(-3deg); }
+  10% { transform: translate(2px, 0) rotate(3deg); }
+  15% { transform: translate(-2px, 0) rotate(-3deg); }
+  20% { transform: translate(2px, 0) rotate(3deg); }
+  25% { transform: translate(-1.5px, 0) rotate(-2deg); }
+  30% { transform: translate(1.5px, 0) rotate(2deg); }
+  35% { transform: translate(-1.5px, 0) rotate(-2deg); }
+  40% { transform: translate(1.5px, 0) rotate(2deg); }
+  45% { transform: translate(0, 0) rotate(0deg); }
 }
 
-@keyframes spot-frost {
+@keyframes spot-danger-flash {
   0%, 100% {
-    box-shadow: 0 0 4px 1px rgba(234, 179, 8, 0.25);
-    filter: brightness(1) saturate(1);
+    box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.4), 0 0 12px 4px rgba(148, 163, 184, 0.2);
+    filter: brightness(1);
+    background-color: #94a3b8;
+  }
+  25% {
+    box-shadow: 0 0 14px 6px rgba(239, 68, 68, 0.7), 0 0 24px 10px rgba(239, 68, 68, 0.4);
+    filter: brightness(1.15);
+    background-color: #ef4444;
   }
   50% {
-    box-shadow: 0 0 6px 2px rgba(234, 179, 8, 0.15);
-    filter: brightness(0.95) saturate(0.9);
+    box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.4), 0 0 12px 4px rgba(148, 163, 184, 0.2);
+    filter: brightness(0.95);
+    background-color: #94a3b8;
   }
-}
-
-.spot-marker-average {
-  animation: spot-wither 3s ease-in-out infinite, spot-frost 3s ease-in-out infinite;
-  will-change: transform, box-shadow, filter;
-}
-
-/* 踩雷 <2.5分：雷电闪烁 + 愤怒颤抖 */
-@keyframes spot-lightning {
-  0%, 90%, 100% {
-    box-shadow: 0 0 4px 1px rgba(148, 163, 184, 0.3);
-    filter: brightness(1);
+  75% {
+    box-shadow: 0 0 14px 6px rgba(239, 68, 68, 0.7), 0 0 24px 10px rgba(239, 68, 68, 0.4);
+    filter: brightness(1.15);
+    background-color: #ef4444;
   }
-  92%, 96% {
-    box-shadow: 0 0 16px 6px rgba(251, 191, 36, 0.8), 0 0 24px 10px rgba(249, 115, 22, 0.5);
-    filter: brightness(1.3);
-  }
-  94%, 98% {
-    box-shadow: 0 0 4px 1px rgba(148, 163, 184, 0.3);
-    filter: brightness(0.9);
-  }
-}
-
-@keyframes spot-angry-shake {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  10% { transform: translate(-1.5px, 0) rotate(-2deg); }
-  20% { transform: translate(1.5px, 0) rotate(2deg); }
-  30% { transform: translate(-1.5px, 0) rotate(-2deg); }
-  40% { transform: translate(1.5px, 0) rotate(2deg); }
-  50% { transform: translate(0, 0) rotate(0deg); }
 }
 
 .spot-marker-bad {
-  animation: spot-angry-shake 0.8s ease-in-out infinite, spot-lightning 2.5s ease-in-out infinite;
-  will-change: transform, box-shadow, filter;
+  animation: spot-danger-shake 0.6s ease-in-out infinite, spot-danger-flash 1.2s ease-in-out infinite;
+  will-change: transform, box-shadow, filter, background-color;
+} */
+ /* 避雷点位 - 碎裂颤抖（更剧烈，表达愤怒） */
+ @keyframes spot-danger-shake {
+  0%, 100% { 
+    transform: translate(0, 0) rotate(0deg); 
+  }
+  15% { 
+    transform: translate(-1.5px, -0.5px) rotate(-2deg); 
+  }
+  30% { 
+    transform: translate(1.5px, 0.5px) rotate(2deg); 
+  }
+  45% { 
+    transform: translate(-1px, 0px) rotate(-1.5deg); 
+  }
+  60% { 
+    transform: translate(1px, -0.5px) rotate(1.5deg); 
+  }
+  75% { 
+    transform: translate(0, 0) rotate(0deg); 
+  }
+}
+
+/* 避雷点位 - 紫黑警告脉冲（完全无红色） */
+@keyframes spot-danger-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px 2px rgba(88, 28, 135, 0.5), 0 0 12px 4px rgba(76, 29, 149, 0.4);
+    filter: brightness(1);
+    background-color: #7e22ce;
+  }
+  50% {
+    box-shadow: 0 0 14px 5px rgba(168, 85, 247, 0.6), 0 0 22px 8px rgba(139, 92, 246, 0.4);
+    filter: brightness(1.08);
+    background-color: #a855f7;
+  }
+}
+
+/* 避雷点位 - 应用动效（与必去完全同频：1.2s） */
+.spot-marker-bad {
+  animation: 
+    spot-danger-shake 1.2s ease-in-out infinite,
+    spot-danger-pulse 1.2s ease-in-out infinite;
+  will-change: transform, box-shadow, filter, background-color;
 }
 
 /* 未评：静态，悬停涟漪 */
@@ -202,7 +240,6 @@ body {
 /* 减少动效模式：禁用所有循环动画 */
 .reduce-motion .spot-marker-must-go,
 .reduce-motion .spot-marker-good,
-.reduce-motion .spot-marker-average,
 .reduce-motion .spot-marker-bad,
 .reduce-motion .spot-marker-selected {
   animation: none !important;
@@ -217,7 +254,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .spot-marker-must-go,
   .spot-marker-good,
-  .spot-marker-average,
   .spot-marker-bad,
   .spot-marker-selected {
     animation: none !important;
@@ -232,7 +268,6 @@ body {
 /* 离屏暂停动画（通过 JS 添加 .offscreen 类） */
 .spot-marker-must-go.offscreen,
 .spot-marker-good.offscreen,
-.spot-marker-average.offscreen,
 .spot-marker-bad.offscreen {
   animation-play-state: paused !important;
 }
