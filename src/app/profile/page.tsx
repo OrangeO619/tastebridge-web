@@ -153,7 +153,7 @@ const shownName=localName||displayName;
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {pref.emoji&&<span className="text-base leading-none">{pref.emoji}</span>}
-                <h2 className="truncate text-sm font-semibold text-white">{spot?.name??"未知店铺"}</h2>
+                {spot?.id ? <a href={`/?spotId=${spot.id}`} className="truncate text-sm font-semibold text-white hover:text-amber-400 hover:underline">{spot.name}</a> : <span className="truncate text-sm font-semibold text-white">未知店铺</span>}
                 {pref.invitedBy&&<span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] text-violet-300">邀请</span>}
               </div>
               {spot?.address&&(<div className="mt-0.5 flex items-center gap-1"><MapPin className="h-3 w-3 flex-shrink-0 text-white/40"/><p className="truncate text-[11px] text-white/50">{spot.address}</p></div>)}
