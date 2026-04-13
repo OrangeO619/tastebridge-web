@@ -106,7 +106,7 @@ export function MapPageClient() {
     let cancelled = false;
     (async () => {
       try {
-        await fetchSpots(null);
+        await fetchSpots(null, { includeCityStats: true });
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : "加载点位失败");
       }
