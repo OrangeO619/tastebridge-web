@@ -22,7 +22,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  /* Geist 无中文子集时，用系统黑体回退，避免出现 □□□ / ??? */
   font-family:
     var(--font-geist-sans),
     "PingFang SC",
@@ -49,150 +48,119 @@ body {
   animation: spot-bottom-card-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ========== 地图点位情感动效 ========== */
+/* ========== 呼吸灯效果 ========== */
 
-/* 必去 ≥4.5分：心跳脉动 + 火焰光晕 */
-@keyframes spot-heartbeat {
-  0%, 100% { transform: scale(1); }
-  15% { transform: scale(1.15); }
-  30% { transform: scale(1.05); }
-  45% { transform: scale(1.12); }
-  60% { transform: scale(1); }
-}
-
-@keyframes spot-flame-glow {
+/* 基础呼吸灯动画（强 - 用于必去和踩雷） */
+@keyframes spot-breathe-strong {
   0%, 100% {
-    box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.5), 0 0 16px 4px rgba(249, 115, 22, 0.3);
+    box-shadow: 0 0 4px 2px rgba(239, 68, 68, 0.25);
     filter: brightness(1);
   }
   50% {
-    box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.7), 0 0 24px 8px rgba(249, 115, 22, 0.5);
-    filter: brightness(1.1);
+    box-shadow: 0 0 12px 6px rgba(239, 68, 68, 0.55);
+    filter: brightness(1.06);
+  }
+}
+
+/* 基础呼吸灯动画（弱 - 用于还行和一般） */
+@keyframes spot-breathe-weak {
+  0%, 100% {
+    box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 6px 3px rgba(0, 0, 0, 0.15);
+    filter: brightness(1.02);
+  }
+}
+
+/* 暗色模式下弱呼吸灯 */
+@media (prefers-color-scheme: dark) {
+  @keyframes spot-breathe-weak {
+    0%, 100% {
+      box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.08);
+    }
+    50% {
+      box-shadow: 0 0 6px 3px rgba(255, 255, 255, 0.15);
+    }
+  }
+}
+
+/* ========== 必去点位（红色呼吸灯 - 强） ========== */
+@keyframes spot-breathe-mustgo {
+  0%, 100% {
+    box-shadow: 0 0 4px 2px rgba(239, 68, 68, 0.25), 0 0 8px 3px rgba(249, 115, 22, 0.15);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 14px 7px rgba(239, 68, 68, 0.6), 0 0 20px 8px rgba(249, 115, 22, 0.35);
+    filter: brightness(1.06);
   }
 }
 
 .spot-marker-must-go {
-  animation: spot-heartbeat 1.2s ease-in-out infinite, spot-flame-glow 1.2s ease-in-out infinite;
-  will-change: transform, box-shadow, filter;
+  animation: spot-breathe-mustgo 2.2s ease-in-out infinite;
+  will-change: box-shadow, filter;
 }
 
-/* 还行 ≥3.5分：阳光脉冲 + 微笑浮动 */
-/* @keyframes spot-sunshine-pulse {
+/* ========== 踩雷点位（紫色呼吸灯 - 强） ========== */
+@keyframes spot-breathe-bad {
   0%, 100% {
-    box-shadow: 0 0 6px 2px rgba(249, 115, 22, 0.3);
-    filter: brightness(1);
-  }
-  50% {
-    box-shadow: 0 0 14px 6px rgba(249, 115, 22, 0.55);
-    filter: brightness(1.08);
-  }
-}
-
-@keyframes spot-smile-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-.spot-marker-good {
-  animation: spot-smile-float 1.8s ease-in-out infinite, spot-sunshine-pulse 1.8s ease-in-out infinite;
-  will-change: transform, box-shadow, filter;
-} */
-
-/* 一般 ≥2.5分：静态，无动效 */
-.spot-marker-average {
-  /* 无动效，保持静态 */
-}
-
-/* 踩雷 <2.5分：强烈警告动效 - 持续颤抖 + 红色闪烁 + 危险光晕 */
-/* @keyframes spot-danger-shake {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  5% { transform: translate(-2px, 0) rotate(-3deg); }
-  10% { transform: translate(2px, 0) rotate(3deg); }
-  15% { transform: translate(-2px, 0) rotate(-3deg); }
-  20% { transform: translate(2px, 0) rotate(3deg); }
-  25% { transform: translate(-1.5px, 0) rotate(-2deg); }
-  30% { transform: translate(1.5px, 0) rotate(2deg); }
-  35% { transform: translate(-1.5px, 0) rotate(-2deg); }
-  40% { transform: translate(1.5px, 0) rotate(2deg); }
-  45% { transform: translate(0, 0) rotate(0deg); }
-}
-
-@keyframes spot-danger-flash {
-  0%, 100% {
-    box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.4), 0 0 12px 4px rgba(148, 163, 184, 0.2);
-    filter: brightness(1);
-    background-color: #94a3b8;
-  }
-  25% {
-    box-shadow: 0 0 14px 6px rgba(239, 68, 68, 0.7), 0 0 24px 10px rgba(239, 68, 68, 0.4);
-    filter: brightness(1.15);
-    background-color: #ef4444;
-  }
-  50% {
-    box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.4), 0 0 12px 4px rgba(148, 163, 184, 0.2);
-    filter: brightness(0.95);
-    background-color: #94a3b8;
-  }
-  75% {
-    box-shadow: 0 0 14px 6px rgba(239, 68, 68, 0.7), 0 0 24px 10px rgba(239, 68, 68, 0.4);
-    filter: brightness(1.15);
-    background-color: #ef4444;
-  }
-}
-
-.spot-marker-bad {
-  animation: spot-danger-shake 0.6s ease-in-out infinite, spot-danger-flash 1.2s ease-in-out infinite;
-  will-change: transform, box-shadow, filter, background-color;
-} */
- /* 避雷点位 - 碎裂颤抖（更剧烈，表达愤怒） */
- @keyframes spot-danger-shake {
-  0%, 100% { 
-    transform: translate(0, 0) rotate(0deg); 
-  }
-  15% { 
-    transform: translate(-1.5px, -0.5px) rotate(-2deg); 
-  }
-  30% { 
-    transform: translate(1.5px, 0.5px) rotate(2deg); 
-  }
-  45% { 
-    transform: translate(-1px, 0px) rotate(-1.5deg); 
-  }
-  60% { 
-    transform: translate(1px, -0.5px) rotate(1.5deg); 
-  }
-  75% { 
-    transform: translate(0, 0) rotate(0deg); 
-  }
-}
-
-/* 避雷点位 - 紫黑警告脉冲（完全无红色） */
-@keyframes spot-danger-pulse {
-  0%, 100% {
-    box-shadow: 0 0 6px 2px rgba(88, 28, 135, 0.5), 0 0 12px 4px rgba(76, 29, 149, 0.4);
+    box-shadow: 0 0 4px 2px rgba(139, 0, 255, 0.25), 0 0 8px 3px rgba(88, 28, 135, 0.2);
     filter: brightness(1);
     background-color: #7e22ce;
   }
   50% {
-    box-shadow: 0 0 14px 5px rgba(168, 85, 247, 0.6), 0 0 22px 8px rgba(139, 92, 246, 0.4);
-    filter: brightness(1.08);
+    box-shadow: 0 0 10px 5px rgba(168, 85, 247, 0.55), 0 0 20px 8px rgba(139, 92, 246, 0.35);
+    filter: brightness(1.06);
     background-color: #a855f7;
   }
 }
 
-/* 避雷点位 - 应用动效（与必去完全同频：1.2s） */
 .spot-marker-bad {
-  animation: 
-    spot-danger-shake 1.2s ease-in-out infinite,
-    spot-danger-pulse 1.2s ease-in-out infinite;
-  will-change: transform, box-shadow, filter, background-color;
+  animation: spot-breathe-bad 2.2s ease-in-out infinite;
+  will-change: box-shadow, filter, background-color;
 }
 
-/* 未评：静态，悬停涟漪 */
+/* ========== 还行点位（橙色呼吸灯 - 弱） ========== */
+@keyframes spot-breathe-good {
+  0%, 100% {
+    box-shadow: 0 0 2px 1px rgba(249, 115, 22, 0.15);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 6px 3px rgba(249, 115, 22, 0.4);
+    filter: brightness(1.02);
+  }
+}
+
+.spot-marker-good {
+  animation: spot-breathe-good 2.8s ease-in-out infinite;
+  will-change: box-shadow, filter;
+}
+
+/* ========== 一般点位（黄色呼吸灯 - 极弱） ========== */
+@keyframes spot-breathe-average {
+  0%, 100% {
+    box-shadow: 0 0 2px 1px rgba(234, 179, 8, 0.2);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 6px 3px rgba(234, 179, 8, 0.4);
+    filter: brightness(1.04);
+  }
+}
+
+.spot-marker-average {
+  animation: spot-breathe-average 2.8s ease-in-out infinite;
+  will-change: box-shadow, filter;
+}
+
+/* ========== 未评点位：静态，悬停涟漪 ========== */
 @keyframes spot-ripple {
   0% {
     transform: scale(1);
-    opacity: 0.6;
+    opacity: 0.5;
   }
   100% {
     transform: scale(2.5);
@@ -212,34 +180,35 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.3);
   transform: translate(-50%, -50%) scale(1);
   opacity: 0;
   pointer-events: none;
 }
 
 .spot-marker-unrated:hover::before {
-  animation: spot-ripple 0.8s ease-out forwards;
+  animation: spot-ripple 0.6s ease-out forwards;
 }
 
-/* 选中状态：脉冲高亮 */
+/* ========== 选中状态 ========== */
 @keyframes spot-selected-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 3px white, 0 0 12px 4px rgba(234, 88, 12, 0.6);
+    box-shadow: 0 0 0 3px white, 0 0 12px 4px rgba(234, 88, 12, 0.5);
   }
   50% {
-    box-shadow: 0 0 0 3px white, 0 0 20px 8px rgba(234, 88, 12, 0.8);
+    box-shadow: 0 0 0 3px white, 0 0 18px 7px rgba(234, 88, 12, 0.7);
   }
 }
 
 .spot-marker-selected {
-  animation: spot-selected-pulse 1s ease-in-out infinite !important;
+  animation: spot-selected-pulse 0.8s ease-in-out infinite !important;
   z-index: 200 !important;
 }
 
-/* 减少动效模式：禁用所有循环动画 */
+/* ========== 减少动效模式 ========== */
 .reduce-motion .spot-marker-must-go,
 .reduce-motion .spot-marker-good,
+.reduce-motion .spot-marker-average,
 .reduce-motion .spot-marker-bad,
 .reduce-motion .spot-marker-selected {
   animation: none !important;
@@ -254,6 +223,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .spot-marker-must-go,
   .spot-marker-good,
+  .spot-marker-average,
   .spot-marker-bad,
   .spot-marker-selected {
     animation: none !important;
@@ -265,9 +235,10 @@ body {
   }
 }
 
-/* 离屏暂停动画（通过 JS 添加 .offscreen 类） */
+/* 离屏暂停动画 */
 .spot-marker-must-go.offscreen,
 .spot-marker-good.offscreen,
+.spot-marker-average.offscreen,
 .spot-marker-bad.offscreen {
   animation-play-state: paused !important;
 }

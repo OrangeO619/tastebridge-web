@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, MapPin, Plus, Search, X } from "lucide-react";
+import { ChevronDown, Loader2, MapPin, Plus, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 
@@ -115,22 +115,51 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
     }
   }, [onCityChange]);
 
-  const handleAddCity = useCallback(() => {
+  const [addingCity, setAddingCity] = useState(false);
+  
+  const handleAddCity = useCallback(async () => {
     const name = newCityName.trim();
-    if (!name) return;
+    if (!name || addingCity) return;
     
     // 检查是否在预设中
     const preset = PRESET_CITIES[name];
     if (preset) {
       handleSelect({ name, ...preset, spotCount: 0 });
-    } else {
-      // 使用高德地理编码获取城市坐标（简化处理，使用默认坐标）
-      // 实际应该调用高德 API
-      handleSelect({ name, center: [116.4074, 39.9042], zoom: 12, spotCount: 0 });
+      setNewCityName("");
+      setAddMode(false);
+      return;
     }
+    
+    // 使用高德地理编码 API 获取城市中心坐标
+    setAddingCity(true);
+    try {
+      const res = await fetch(`/api/geocode?address=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      
+      if (data.center && Array.isArray(data.center) && data.center.length === 2) {
+        const [lng, lat] = data.center;
+        // 验证坐标有效性（中国范围）
+        if (lng > 70 && lng < 140 && lat > 15 && lat < 55) {
+          handleSelect({ name, center: [lng, lat], zoom: 12, spotCount: 0 });
+        } else {
+          alert(`城市"${name}"的坐标无效，请检查城市名称`);
+          return;
+        }
+      } else {
+        alert(data.error || `未找到城市"${name}"的坐标，请检查城市名称是否正确`);
+        return;
+      }
+    } catch (err) {
+      console.error("获取城市坐标失败:", err);
+      alert("获取城市坐标失败，请稍后重试");
+      return;
+    } finally {
+      setAddingCity(false);
+    }
+    
     setNewCityName("");
     setAddMode(false);
-  }, [newCityName, handleSelect]);
+  }, [newCityName, handleSelect, addingCity]);
 
   const currentCityInfo = allCities.find((c) => c.name === currentCity);
 
@@ -207,17 +236,18 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
                 <input
                   value={newCityName}
                   onChange={(e) => setNewCityName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCity(); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleAddCity(); }}
                   placeholder="输入城市名称"
                   className="min-w-0 flex-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm outline-none focus:border-amber-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                   autoFocus
                 />
                 <button
-                  onClick={handleAddCity}
-                  disabled={!newCityName.trim()}
-                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-50"
+                  onClick={() => void handleAddCity()}
+                  disabled={!newCityName.trim() || addingCity}
+                  className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-50"
                 >
-                  添加
+                  {addingCity ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {addingCity ? "定位中" : "添加"}
                 </button>
                 <button
                   onClick={() => { setAddMode(false); setNewCityName(""); }}
