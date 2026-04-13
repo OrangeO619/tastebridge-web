@@ -7,8 +7,8 @@ const LEGEND = [
   { color: "#ef4444", label: "必去", desc: "≥4.5分" },
   { color: "#f97316", label: "还行", desc: "≥3.5分" },
   { color: "#eab308", label: "一般", desc: "≥2.5分" },
-  { color: "#94a3b8", label: "踩雷", desc: "<2.5分" },
-  { color: "#f59e0b", label: "未评", desc: "无评分" },
+  { color: "#a855f7", label: "踩雷", desc: "<2.5分" },
+  { color: "#94a3b8", label: "未评", desc: "无评分" },
 ];
 
 type MapLegendProps = {

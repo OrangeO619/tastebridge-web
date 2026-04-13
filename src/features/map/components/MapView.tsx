@@ -35,11 +35,11 @@ type MapViewProps = {
  * 无记录 → 琥珀；≥4.5 → 红；≥3.5 → 橙；≥2.5 → 黄；<2.5 → 灰
  */
 function scoreColor(avg: number | undefined): { fill: string; glow: string } {
-  if (!avg) return { fill: "#f59e0b", glow: "rgba(245,158,11,0.45)" };
+  if (!avg) return { fill: "#94a3b8", glow: "rgba(245,158,11,0.45)" };
   if (avg >= 4.5) return { fill: "#ef4444", glow: "rgba(239,68,68,0.45)" };
   if (avg >= 3.5) return { fill: "#f97316", glow: "rgba(249,115,22,0.45)" };
   if (avg >= 2.5) return { fill: "#eab308", glow: "rgba(234,179,8,0.45)" };
-  return { fill: "#94a3b8", glow: "rgba(148,163,184,0.45)" };
+  return { fill: "#a855f7", glow: "rgba(148,163,184,0.45)" };
 }
 
 /** 按平均喜爱值返回基础直径 (px)：分越高点越大 */
