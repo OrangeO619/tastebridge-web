@@ -44,13 +44,42 @@ type CitySelectorProps = {
   className?: string;
 };
 
+// 默认城市（必须与 PRESET_CITIES 中的键名一致）
+export const DEFAULT_CITY = "武汉";
+
+// 工具函数：从本地存储读取上次选择的城市
+export function getStoredCity(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(STORAGE_KEY);
+}
+
+// 工具函数：获取城市信息
+export function getCityInfo(name: string): CityInfo | null {
+  const preset = PRESET_CITIES[name];
+  if (preset) return { name, ...preset, spotCount: 0 };
+  return null;
+}
+
+// 默认城市信息
+export const DEFAULT_CITY_INFO: CityInfo = {
+  name: DEFAULT_CITY,
+  ...PRESET_CITIES[DEFAULT_CITY],
+  spotCount: 0,
+};
+
 export function CitySelector({ cities, currentCity, onCityChange, className }: CitySelectorProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [addMode, setAddMode] = useState(false);
   const [newCityName, setNewCityName] = useState("");
+  const [isMounted, setIsMounted] = useState(false);  // 添加客户端挂载状态
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 标记组件已挂载
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 点击外部关闭
   useEffect(() => {
@@ -75,11 +104,9 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
   // 合并用户城市和预设城市
   const allCities = useMemo(() => {
     const cityMap = new Map<string, CityInfo>();
-    // 先添加用户有记录的城市
     for (const c of cities) {
       cityMap.set(c.name, c);
     }
-    // 添加预设城市（如果用户没有记录）
     for (const [name, info] of Object.entries(PRESET_CITIES)) {
       if (!cityMap.has(name)) {
         cityMap.set(name, { name, ...info, spotCount: 0 });
@@ -109,7 +136,6 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
     onCityChange(city);
     setOpen(false);
     setSearch("");
-    // 保存到本地存储
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, city.name);
     }
@@ -121,7 +147,6 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
     const name = newCityName.trim();
     if (!name || addingCity) return;
     
-    // 检查是否在预设中
     const preset = PRESET_CITIES[name];
     if (preset) {
       handleSelect({ name, ...preset, spotCount: 0 });
@@ -130,7 +155,6 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
       return;
     }
     
-    // 使用高德地理编码 API 获取城市中心坐标
     setAddingCity(true);
     try {
       const res = await fetch(`/api/geocode?address=${encodeURIComponent(name)}`);
@@ -138,7 +162,6 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
       
       if (data.center && Array.isArray(data.center) && data.center.length === 2) {
         const [lng, lat] = data.center;
-        // 验证坐标有效性（中国范围）
         if (lng > 70 && lng < 140 && lat > 15 && lat < 55) {
           handleSelect({ name, center: [lng, lat], zoom: 12, spotCount: 0 });
         } else {
@@ -161,7 +184,9 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
     setAddMode(false);
   }, [newCityName, handleSelect, addingCity]);
 
-  const currentCityInfo = allCities.find((c) => c.name === currentCity);
+  // 服务器端和客户端首次渲染时使用相同的默认显示
+  // 避免 hydration 错误
+  const displayCity = isMounted ? currentCity : DEFAULT_CITY;
 
   return (
     <div ref={dropdownRef} className={cn("relative", className)}>
@@ -171,7 +196,9 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
         className="flex items-center gap-1.5 rounded-full border border-white/30 bg-black/40 px-3 py-1.5 text-sm text-white backdrop-blur-sm transition hover:bg-black/55"
       >
         <MapPin className="h-3.5 w-3.5" />
-        <span className="font-medium">{currentCity}</span>
+        <span className="font-medium" suppressHydrationWarning>
+          {displayCity}
+        </span>
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </button>
 
@@ -271,23 +298,3 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
     </div>
   );
 }
-
-// 工具函数：从本地存储读取上次选择的城市
-export function getStoredCity(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(STORAGE_KEY);
-}
-
-// 工具函数：获取城市信息
-export function getCityInfo(name: string): CityInfo | null {
-  const preset = PRESET_CITIES[name];
-  if (preset) return { name, ...preset };
-  return null;
-}
-
-// 默认城市
-export const DEFAULT_CITY = "武汉";
-export const DEFAULT_CITY_INFO: CityInfo = {
-  name: DEFAULT_CITY,
-  ...PRESET_CITIES[DEFAULT_CITY],
-};

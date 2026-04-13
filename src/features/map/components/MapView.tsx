@@ -27,6 +27,8 @@ type MapViewProps = {
   initialCenter?: [number, number];
   /** 初始缩放级别 */
   initialZoom?: number;
+  /** 跳过自动适配视野 */
+  skipFitView?: boolean;
   className?: string;
 };
 
@@ -121,6 +123,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   reduceMotion = false,
   initialCenter,
   initialZoom,
+  skipFitView = false,
   className,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -289,7 +292,9 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     setupIntersectionObserver();
     
     const sig = spotsGeometrySignature(spots);
+    // 只有在不跳过自动适配视野时才执行 setFitView
     if (
+      !skipFitView &&
       spots.length > 0 &&
       sig !== lastFitSignatureRef.current &&
       typeof map.setFitView === "function"
@@ -307,7 +312,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       markersRef.current = [];
       markerElementsRef.current.clear();
     };
-  }, [mapReady, spots, selectedSpotId, setupIntersectionObserver]);
+  }, [mapReady, spots, selectedSpotId, setupIntersectionObserver, skipFitView]);
 
   // 减少动效模式切换
   useEffect(() => {

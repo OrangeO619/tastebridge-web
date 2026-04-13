@@ -116,6 +116,21 @@ export function MapPageClient() {
     };
   }, [fetchSpots]);
 
+  // 客户端初始化时，确保地图视野与选择的城市一致
+  const initialCityAppliedRef = useRef(false);
+  const [skipFitView, setSkipFitView] = useState(true); // 初始时跳过自动适配，等待城市视野设置完成
+  useEffect(() => {
+    if (initialCityAppliedRef.current) return;
+    // 等待地图准备好后移动到选择的城市
+    const timer = setTimeout(() => {
+      if (mapRef.current && currentCity) {
+        mapRef.current.flyTo(currentCity.center, currentCity.zoom);
+        initialCityAppliedRef.current = true;
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [currentCity]);
+
   useEffect(() => {
     if (!user?.id) return;
     fetch(`/api/maps/${encodeURIComponent(user.id)}/shared`, { headers: { "x-user-id": user.id } })
@@ -328,7 +343,7 @@ export function MapPageClient() {
         {semanticSummary ? <div className="pointer-events-auto rounded-lg bg-emerald-900/35 px-2 py-1 text-[11px] text-emerald-100 sm:px-3 sm:py-1.5 sm:text-xs">{semanticSummary}</div> : null}
       </header>
 
-      <MapView ref={mapRef} spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} reduceMotion={reduceMotion} initialCenter={currentCity.center} initialZoom={currentCity.zoom} className="h-full w-full flex-1" />
+      <MapView ref={mapRef} spots={spots} selectedSpotId={selectedSpot?.id ?? null} onSpotSelect={handleSpotSelect} reduceMotion={reduceMotion} initialCenter={currentCity.center} initialZoom={currentCity.zoom} skipFitView={skipFitView} className="h-full w-full flex-1" />
       <MapLegend reduceMotion={reduceMotion} onReduceMotionChange={setReduceMotion} />
 
       {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}
