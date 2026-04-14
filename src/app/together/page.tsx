@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, Heart, Loader2, MapPin, Music, Pause, Play, RefreshCw, SkipForward, Star, Users, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Loader2, MapPin, Music, Pause, Play, RefreshCw, SkipForward, Star, Users, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
@@ -77,6 +77,28 @@ export default function TogetherPage() {
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [trackLoading, setTrackLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Image preview state
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  const openPreview = (images: string[], index: number) => {
+    setPreviewImages(images);
+    setPreviewIndex(index);
+  };
+
+  const closePreview = () => {
+    setPreviewImages([]);
+    setPreviewIndex(0);
+  };
+
+  const prevImage = () => {
+    setPreviewIndex((i) => (i > 0 ? i - 1 : previewImages.length - 1));
+  };
+
+  const nextImage = () => {
+    setPreviewIndex((i) => (i < previewImages.length - 1 ? i + 1 : 0));
+  };
 
   // Load friends list
   useEffect(() => {
@@ -309,7 +331,11 @@ export default function TogetherPage() {
                           </div>
                           {spot.userA.pref?.images && spot.userA.pref.images.length > 0 && (
                             <div className="flex gap-1.5 overflow-x-auto">
-                              {spot.userA.pref.images.map((url, i) => <img key={i} src={url} alt="" className="h-20 w-20 flex-shrink-0 rounded-xl object-cover" />)}
+                              {spot.userA.pref.images.map((url, i) => (
+                                <button key={i} type="button" onClick={() => openPreview(spot.userA.pref!.images, i)} className="flex-shrink-0">
+                                  <img src={url} alt="" className="h-20 w-20 rounded-xl object-cover hover:opacity-80 transition-opacity cursor-zoom-in" />
+                                </button>
+                              ))}
                             </div>
                           )}
                           {spot.userA.pref ? (
@@ -334,7 +360,11 @@ export default function TogetherPage() {
                           </div>
                           {spot.userB.pref?.images && spot.userB.pref.images.length > 0 && (
                             <div className="flex gap-1.5 overflow-x-auto">
-                              {spot.userB.pref.images.map((url, i) => <img key={i} src={url} alt="" className="h-20 w-20 flex-shrink-0 rounded-xl object-cover" />)}
+                              {spot.userB.pref.images.map((url, i) => (
+                                <button key={i} type="button" onClick={() => openPreview(spot.userB.pref!.images, i)} className="flex-shrink-0">
+                                  <img src={url} alt="" className="h-20 w-20 rounded-xl object-cover hover:opacity-80 transition-opacity cursor-zoom-in" />
+                                </button>
+                              ))}
                             </div>
                           )}
                           {spot.userB.pref ? (
@@ -359,6 +389,57 @@ export default function TogetherPage() {
           </>
         ) : null}
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImages.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={closePreview}>
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={closePreview}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* Previous button */}
+          {previewImages.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); prevImage(); }}
+              className="absolute left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+          )}
+
+          {/* Image */}
+          <img
+            src={previewImages[previewIndex]}
+            alt=""
+            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Next button */}
+          {previewImages.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); nextImage(); }}
+              className="absolute right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          )}
+
+          {/* Image counter */}
+          {previewImages.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-sm text-white">
+              {previewIndex + 1} / {previewImages.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
