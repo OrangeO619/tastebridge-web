@@ -50,7 +50,7 @@ export function MapPageClient() {
     }
     return DEFAULT_CITY_INFO;
   });
-  const [cityStats, setCityStats] = useState<Array<{ name: string; spotCount: number }>>([]);
+  const [cityStats, setCityStats] = useState<Array<{ name: string; spotCount: number; center?: [number, number]; zoom?: number }>>([]);
 
   const urlSpotHandledRef = useRef(false);
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -272,7 +272,7 @@ export function MapPageClient() {
       <header className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col gap-1.5 bg-gradient-to-b from-black/55 via-black/35 to-transparent px-2 pb-1.5 pt-2 sm:gap-2 sm:px-4 sm:pb-2 sm:pt-3">
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
           <div className="pointer-events-auto col-span-1 flex min-w-0 items-center gap-2 sm:order-1">
-            <CitySelector cities={cityStats.map(cs => ({ name: cs.name, center: getCityInfo(cs.name)?.center ?? [116.4, 39.9], zoom: getCityInfo(cs.name)?.zoom ?? 12, spotCount: cs.spotCount }))} currentCity={currentCity.name} onCityChange={handleCityChange} />
+            <CitySelector cities={cityStats.map(cs => ({ name: cs.name, center: cs.center ?? getCityInfo(cs.name)?.center ?? [116.4, 39.9], zoom: cs.zoom ?? getCityInfo(cs.name)?.zoom ?? 12, spotCount: cs.spotCount }))} currentCity={currentCity.name} onCityChange={handleCityChange} />
             <span className="hidden text-lg font-semibold tracking-tight text-white sm:inline">TasteBridge</span>
             <a href="/profile" className="flex items-center gap-1 rounded-full border border-white/35 bg-black/35 px-2 py-0.5 text-[11px] text-white/95 hover:bg-black/55 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs">
               {avatarUrl ? <img src={avatarUrl} alt="" className="h-3.5 w-3.5 rounded-full object-cover sm:h-4 sm:w-4" /> : <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold sm:h-4 sm:w-4 sm:text-[9px]">{displayName.slice(0, 1).toUpperCase()}</span>}
@@ -348,7 +348,7 @@ export function MapPageClient() {
 
       {selectedSpot && !addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><SpotBottomCard spot={selectedSpot} onClose={handleCloseCard} showPrefGuide={prefGuideSpotId === selectedSpot.id} onDismissPrefGuide={() => setPrefGuideSpotId(null)} invitedBy={invitedBy ?? undefined} onSpotUpdated={(nextSpot) => { setSelectedSpot(nextSpot); setSpots((prev) => prev.map((s) => s.id === nextSpot.id ? { ...s, ...nextSpot } : s)); }} className="max-w-lg" /></div> : null}
 
-      {addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[45] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><AddSpotSheet lat={addDraft.lat} lng={addDraft.lng} initial={addDraft.initial} variant={addDraft.initial ? "poi" : "pin"} withLinkedPref={addDraft.initial == null} onClose={handleCloseAdd} onSuccess={async () => { setActiveFilters(null); setSemanticBaseSummary(null); await fetchSpots(null); }} onSpotCreated={(spot) => { setPrefGuideSpotId(spot.id); setSelectedSpot(spot); }} className="max-w-lg" /></div> : null}
+      {addDraft ? <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[45] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"><AddSpotSheet lat={addDraft.lat} lng={addDraft.lng} initial={addDraft.initial} variant={addDraft.initial ? "poi" : "pin"} withLinkedPref={addDraft.initial == null} onClose={handleCloseAdd} onSuccess={async () => { setActiveFilters(null); setSemanticBaseSummary(null); await fetchSpots(null, { includeCityStats: true }); }} onSpotCreated={(spot) => { setPrefGuideSpotId(spot.id); setSelectedSpot(spot); }} className="max-w-lg" /></div> : null}
     </div>
   );
 }

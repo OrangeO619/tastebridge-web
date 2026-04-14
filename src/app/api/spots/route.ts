@@ -41,11 +41,66 @@ const CITY_BOUNDS: Record<string, { minLng: number; maxLng: number; minLat: numb
   佛山: { minLng: 112.3, maxLng: 113.5, minLat: 22.4, maxLat: 23.6 },
 };
 
-function detectCity(lng: number, lat: number): string | null {
+function detectCityFromBounds(lng: number, lat: number): string | null {
   for (const [city, bounds] of Object.entries(CITY_BOUNDS)) {
     if (lng >= bounds.minLng && lng <= bounds.maxLng && lat >= bounds.minLat && lat <= bounds.maxLat) {
       return city;
     }
+  }
+  return null;
+}
+
+function detectCityFromAddress(address?: string): string | null {
+  if (!address) return null;
+  
+  // 直辖市特殊处理
+  if (address.includes("北京")) return "北京";
+  if (address.includes("上海")) return "上海";
+  if (address.includes("天津")) return "天津";
+  if (address.includes("重庆")) return "重庆";
+  
+  // 匹配"XX市"格式
+  const cityMatch = address.match(/([\u4e00-\u9fa5]{2,4})市/);
+  if (cityMatch) return cityMatch[1];
+  
+  // 匹配自治州
+  const zhouMatch = address.match(/([\u4e00-\u9fa5]{2,6})(?:自治州|州)/);
+  if (zhouMatch) return zhouMatch[1];
+  
+  // 匹配地区/盟
+  const areaMatch = address.match(/([\u4e00-\u9fa5]{2,4})(?:地区|盟)/);
+  if (areaMatch) return areaMatch[1];
+  
+  return null;
+}
+
+// 使用高德逆地理编码获取城市名（批量处理）
+async function reverseGeocodeCity(lng: number, lat: number): Promise<string | null> {
+  const key = process.env.AMAP_WEB_SERVICE_KEY || process.env.AMAP_REST_KEY;
+  if (!key) return null;
+  
+  try {
+    const url = `https://restapi.amap.com/v3/geocode/regeo?key=${key}&location=${lng},${lat}&extensions=base`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    if (data.status === "1" && data.regeocode?.addressComponent?.city) {
+      // 高德返回的 city 可能是数组或字符串
+      const city = data.regeocode.addressComponent.city;
+      if (Array.isArray(city) && city.length > 0) {
+        return city[0].replace(/市$/, "");
+      }
+      if (typeof city === "string" && city) {
+        return city.replace(/市$/, "");
+      }
+      // 如果 city 为空，可能是直辖市，使用 province
+      const province = data.regeocode.addressComponent.province;
+      if (province && ["北京市", "上海市", "天津市", "重庆市"].includes(province)) {
+        return province.replace(/市$/, "");
+      }
+    }
+  } catch (e) {
+    console.error("逆地理编码失败:", e);
   }
   return null;
 }
@@ -135,17 +190,60 @@ export async function GET(request: Request) {
       });
 
     // 计算城市统计（在城市筛选之前）
-    let cityStats: Array<{ name: string; spotCount: number }> = [];
+    let cityStats: Array<{ name: string; spotCount: number; center?: [number, number]; zoom?: number }> = [];
     if (includeCityStats) {
-      const cityCountMap = new Map<string, number>();
-      for (const spot of spots) {
-        const detectedCity = detectCity(spot.location.lng, spot.location.lat);
+      const cityDataMap = new Map<string, { count: number; lngSum: number; latSum: number }>();
+      const needsReverseGeocode: Array<{ spot: typeof spots[0]; index: number }> = [];
+      
+      // 第一轮：使用边界框和地址检测
+      for (let i = 0; i < spots.length; i++) {
+        const spot = spots[i];
+        let detectedCity = detectCityFromBounds(spot.location.lng, spot.location.lat);
+        if (!detectedCity) {
+          detectedCity = detectCityFromAddress(spot.address);
+        }
         if (detectedCity) {
-          cityCountMap.set(detectedCity, (cityCountMap.get(detectedCity) ?? 0) + 1);
+          const cur = cityDataMap.get(detectedCity) ?? { count: 0, lngSum: 0, latSum: 0 };
+          cur.count += 1;
+          cur.lngSum += spot.location.lng;
+          cur.latSum += spot.location.lat;
+          cityDataMap.set(detectedCity, cur);
+        } else {
+          needsReverseGeocode.push({ spot, index: i });
         }
       }
-      cityStats = Array.from(cityCountMap.entries())
-        .map(([name, spotCount]) => ({ name, spotCount }))
+      
+      // 第二轮：对未检测到城市的点位使用逆地理编码（限制并发数）
+      if (needsReverseGeocode.length > 0) {
+        const batchSize = 10; // 每批最多处理10个
+        const toProcess = needsReverseGeocode.slice(0, batchSize);
+        const results = await Promise.all(
+          toProcess.map(async ({ spot }) => {
+            const city = await reverseGeocodeCity(spot.location.lng, spot.location.lat);
+            return { spot, city };
+          })
+        );
+        
+        for (const { spot, city } of results) {
+          if (city) {
+            const cur = cityDataMap.get(city) ?? { count: 0, lngSum: 0, latSum: 0 };
+            cur.count += 1;
+            cur.lngSum += spot.location.lng;
+            cur.latSum += spot.location.lat;
+            cityDataMap.set(city, cur);
+          }
+        }
+      }
+      
+      cityStats = Array.from(cityDataMap.entries())
+        .map(([name, data]) => {
+          // 优先使用预设城市的中心坐标
+          const preset = CITY_BOUNDS[name];
+          const center: [number, number] = preset
+            ? [(preset.minLng + preset.maxLng) / 2, (preset.minLat + preset.maxLat) / 2]
+            : [data.lngSum / data.count, data.latSum / data.count];
+          return { name, spotCount: data.count, center, zoom: 12 };
+        })
         .sort((a, b) => b.spotCount - a.spotCount);
     }
 
