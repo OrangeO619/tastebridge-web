@@ -104,7 +104,7 @@ export default function TogetherPage() {
   const loadTogether = useCallback(async (friendId: string) => {
     if (!userId || !friendId) return;
     setLoading(true); setError(null); setData(null);
-    setPlaying(false); setCurrentTrack(null);
+    setPlaying(false); setCurrentTrack(null); setTrackOffset(0);
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     try {
       const r = await fetch(`/api/ai/summary/together?userId=${encodeURIComponent(userId)}&friendId=${encodeURIComponent(friendId)}`, { headers: { "x-user-id": userId } });
@@ -129,6 +129,7 @@ export default function TogetherPage() {
     setError(null);
     setPlaying(false);
     setCurrentTrack(null);
+    setTrackOffset(0);
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
   };
 
@@ -142,20 +143,32 @@ export default function TogetherPage() {
     else { audioRef.current.play().catch(() => setPlaying(false)); setPlaying(true); }
   };
 
+  const [trackOffset, setTrackOffset] = useState(0);
+
   const handleNextTrack = async () => {
-    if (!data || !userId || !selectedFriend) return;
+    if (!data?.music?.searchQuery) return;
     setTrackLoading(true);
     try {
-      const r = await fetch(`/api/ai/summary/together?userId=${encodeURIComponent(userId)}&friendId=${encodeURIComponent(selectedFriend.id)}`, { headers: { "x-user-id": userId } });
-      const d = await r.json() as TogetherData;
-      if (d.music?.track?.url && d.music.track.url !== currentTrack?.url) {
+      const params = new URLSearchParams({
+        query: data.music.searchQuery,
+        offset: String(trackOffset + 1),
+      });
+      if (currentTrack?.id) {
+        params.set("excludeId", currentTrack.id);
+      }
+      const r = await fetch(`/api/ai/music/next?${params.toString()}`);
+      const d = await r.json() as { track?: MusicTrack; error?: string };
+      if (r.ok && d.track) {
         if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
         setPlaying(false);
-        setCurrentTrack(d.music.track);
-        setData((prev) => prev ? { ...prev, music: d.music } : prev);
+        setCurrentTrack(d.track);
+        setTrackOffset((prev) => prev + 1);
       }
-    } catch { /* ignore */ }
-    finally { setTrackLoading(false); }
+    } catch {
+      // 网络错误时静默失败
+    } finally {
+      setTrackLoading(false);
+    }
   };
 
   /* ---------- render: friend selection ---------- */
