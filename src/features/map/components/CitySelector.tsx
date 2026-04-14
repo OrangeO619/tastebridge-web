@@ -101,18 +101,18 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
     }
   }, [open]);
 
-  // 合并用户城市和预设城市
+  // 只显示有点位的城市，不再自动添加所有预设城市
   const allCities = useMemo(() => {
-    const cityMap = new Map<string, CityInfo>();
-    for (const c of cities) {
-      cityMap.set(c.name, c);
-    }
-    for (const [name, info] of Object.entries(PRESET_CITIES)) {
-      if (!cityMap.has(name)) {
-        cityMap.set(name, { name, ...info, spotCount: 0 });
+    // 只使用从 props 传入的有点位的城市
+    // 预设城市坐标仅用于补充坐标信息
+    return cities.map((c) => {
+      // 如果城市在预设中，使用预设的坐标
+      const preset = PRESET_CITIES[c.name];
+      if (preset) {
+        return { ...c, center: preset.center, zoom: preset.zoom };
       }
-    }
-    return Array.from(cityMap.values());
+      return c;
+    });
   }, [cities]);
 
   // 搜索过滤
@@ -274,7 +274,7 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
                   className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-50"
                 >
                   {addingCity ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  {addingCity ? "定位中" : "添加"}
+                  {addingCity ? "定位中" : "定位"}
                 </button>
                 <button
                   onClick={() => { setAddMode(false); setNewCityName(""); }}
@@ -289,7 +289,7 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-500 transition hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
               >
                 <Plus className="h-4 w-4" />
-                <span>添加其他城市</span>
+                <span>定位其他城市</span>
               </button>
             )}
           </div>
