@@ -193,7 +193,7 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
       {/* 触发按钮 */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-full border border-white/30 bg-black/40 px-3 py-1.5 text-sm text-white backdrop-blur-sm transition hover:bg-black/55"
+        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/30 bg-black/40 px-3 py-1.5 text-sm text-white backdrop-blur-sm transition hover:bg-black/55"
       >
         <MapPin className="h-3.5 w-3.5" />
         <span className="font-medium" suppressHydrationWarning>
@@ -236,7 +236,7 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
                   key={city.name}
                   onClick={() => handleSelect(city)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition",
+                    "flex cursor-pointer w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition",
                     city.name === currentCity
                       ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                       : "text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -286,7 +286,7 @@ export function CitySelector({ cities, currentCity, onCityChange, className }: C
             ) : (
               <button
                 onClick={() => setAddMode(true)}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-500 transition hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                className="flex cursor-pointer w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-500 transition hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
               >
                 <Plus className="h-4 w-4" />
                 <span>定位其他城市</span>

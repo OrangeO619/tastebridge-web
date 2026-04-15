@@ -263,7 +263,7 @@ export function PoiSearchBar({ onPick, className }: PoiSearchBarProps) {
             type="button"
             onClick={() => void search()}
             disabled={loading}
-            className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-medium text-white shadow-md hover:bg-amber-600 disabled:opacity-60 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm"
+            className="flex cursor-pointer shrink-0 items-center gap-1 rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-medium text-white shadow-md hover:bg-amber-600 disabled:opacity-60 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

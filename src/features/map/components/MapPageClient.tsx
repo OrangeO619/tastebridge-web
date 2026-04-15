@@ -279,7 +279,7 @@ export function MapPageClient() {
               <span className="max-[420px]:hidden">{displayName}</span>
             </a>
             <NotificationBell />
-            <button onClick={signOut} className="hidden rounded-full border border-white/20 bg-black/30 px-2 py-0.5 text-[11px] text-white/70 hover:bg-black/50 sm:block sm:px-2.5 sm:py-1 sm:text-xs">退出</button>
+            <button onClick={signOut} className="hidden cursor-pointer rounded-full border border-white/20 bg-black/30 px-2 py-0.5 text-[11px] text-white/70 hover:bg-black/50 sm:block sm:px-2.5 sm:py-1 sm:text-xs">退出</button>
           </div>
           <PoiSearchBar className="pointer-events-auto col-span-3 row-start-2 min-w-0 sm:col-span-1 sm:row-start-1 sm:order-2 sm:min-w-[280px] sm:max-w-md" onPick={handlePoiPick} />
           <div className="pointer-events-auto col-span-1 flex items-center gap-1.5 sm:order-4">
@@ -295,7 +295,7 @@ export function MapPageClient() {
                   void handleLayerChange(val as "all" | "mine" | "shared");
                 }
               }} 
-              className="rounded-full border border-white/25 bg-black/40 px-2 py-1 text-[11px] text-white/90 outline-none sm:px-3 sm:py-1.5 sm:text-xs"
+              className="rounded-full cursor-pointer border border-white/25 bg-black/40 px-2 py-1 text-[11px] text-white/90 outline-none sm:px-3 sm:py-1.5 sm:text-xs"
             >
               <option value="all">全部图层</option>
               <option value="mine">我的足迹</option>
@@ -310,7 +310,7 @@ export function MapPageClient() {
 
         {/* 移动端折叠的 AI 搜索栏 */}
         <div className="pointer-events-auto sm:hidden">
-          <button onClick={() => setShowAiSearch(!showAiSearch)} className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-black/40 px-2.5 py-1.5 backdrop-blur-md">
+          <button onClick={() => setShowAiSearch(!showAiSearch)} className="flex cursor-pointer w-full items-center justify-between rounded-lg border border-white/20 bg-black/40 px-2.5 py-1.5 backdrop-blur-md">
             <div className="flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-emerald-300" />
               <span className="text-[11px] text-white/80">{hasAnyFilter(activeFilters) ? "已筛选" : "AI 搜索"}</span>
@@ -329,7 +329,7 @@ export function MapPageClient() {
         <div className="pointer-events-auto hidden items-center gap-2 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur-md sm:flex">
           <Sparkles className="h-4 w-4 text-emerald-300" />
           <input value={semanticQuery} onChange={(e) => setSemanticQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void handleSemanticSearch(); }} placeholder="语义搜索：如 适合约会的安静餐厅" className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/45 outline-none" />
-          <button onClick={() => void handleSemanticSearch()} disabled={semanticLoading || !semanticQuery.trim()} className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-400 disabled:opacity-60">{semanticLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "AI 搜索"}</button>
+          <button onClick={() => void handleSemanticSearch()} disabled={semanticLoading || !semanticQuery.trim()} className="cursor-pointer rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-400 disabled:opacity-60">{semanticLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "AI 搜索"}</button>
           {hasAnyFilter(activeFilters) ? <button onClick={() => void clearSemanticSearch()} className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/80 hover:bg-white/20"><X className="h-3.5 w-3.5" /></button> : null}
         </div>
 

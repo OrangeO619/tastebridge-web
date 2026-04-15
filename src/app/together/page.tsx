@@ -220,7 +220,7 @@ export default function TogetherPage() {
           ) : (
             <div className="space-y-2">
               {friends.map((f) => (
-                <button key={f.id} onClick={() => handleSelectFriend(f)} className="flex w-full items-center gap-3 rounded-2xl bg-white/8 px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/12">
+                <button key={f.id} onClick={() => handleSelectFriend(f)} className="cursor-pointer flex w-full items-center gap-3 rounded-2xl bg-white/8 px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/12">
                   <Avatar src={f.avatarUrl} name={f.displayName ?? f.id} />
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-sm font-medium text-white">{f.displayName ?? f.id.slice(0, 6)}</p>
@@ -243,7 +243,7 @@ export default function TogetherPage() {
     <div className="min-h-dvh bg-zinc-100 dark:bg-zinc-900">
       {/* Back button */}
       <div className="mx-auto max-w-lg px-4 pt-4">
-        <button onClick={handleBack} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"><ArrowLeft className="h-4 w-4" /></button>
+        <button onClick={handleBack} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 cursor-pointer"><ArrowLeft className="h-4 w-4" /></button>
       </div>
 
       <div className="mx-auto max-w-lg px-4 pb-12 pt-3 space-y-4">
@@ -292,7 +292,7 @@ export default function TogetherPage() {
                 <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{currentTrack?.name ?? data.music.searchQuery}</p>
                 <p className="truncate text-xs text-zinc-500">{currentTrack?.artist ?? ""}</p>
               </div>
-              <button onClick={() => void handleNextTrack()} disabled={trackLoading} className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700">
+              <button onClick={() => void handleNextTrack()} disabled={trackLoading} className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700 cursor-pointer">
                 {trackLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "换一首"}
               </button>
             </div>

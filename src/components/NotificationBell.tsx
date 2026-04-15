@@ -201,7 +201,7 @@ export function NotificationBell() {
         onClick={() => {
           setOpen((o) => !o);
         }}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50"
+        className="relative flex cursor-pointer h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50"
       >
         <Bell className="h-4 w-4" />
         {badgeCount > 0 && (
